@@ -12,9 +12,9 @@ df_reaction = pd.read_csv(
 )
 
 # Create a dictionary to map recipient_id to system_given_name in df_recipient
-recipient_id_to_name = df_recipient.set_index("_id")["system_display_name"].to_dict()
+recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
 
-# Update the 'author_name' and 'quote_recipient_name' columns in df_message to use system_display_name
+# Update the 'author_name' and 'quote_recipient_name' columns in df_message to use profile_joined_name
 df_message["author_name"] = df_message["from_recipient_id"].map(recipient_id_to_name)
 df_message["quote_recipient_name"] = df_message["quote_author"].map(
     recipient_id_to_name
@@ -85,10 +85,18 @@ half_life = df_social_network["time_diff"].quantile(0.75)
 # Calculate the decay constant
 decay_constant = np.log(2) / half_life
 
-# Calculate the weight using the exponential decay function
-df_social_network['weight'] = 0.5 * np.exp(-decay_constant * df_social_network['time_diff'])
+
+reaction_base_value = 0.5
+# Calculate the weight using the exponential decay function (0.5 is arbitrary max value of reactions, will adjust later)
+df_social_network['weight'] = reaction_base_value * np.exp(-decay_constant * df_social_network['time_diff'])
+
+df_social_network.loc[df_social_network['weight'] < (reaction_base_value * 0.1), 'weight'] = (reaction_base_value * 0.1)
+
 
 df_social_network.head()
+
+
+
 
 
 
@@ -98,8 +106,8 @@ df_recipient = pd.read_csv(
     "/Users/raymondpasek/Repos/among-friends/data/raw/recipient.csv"
 )
 
-# Create a dictionary to map recipient_id to system_display_name in df_recipient
-recipient_id_to_name = df_recipient.set_index("_id")["system_display_name"].to_dict()
+# Create a dictionary to map recipient_id to profile_joined_name in df_recipient
+recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
 
 # Perform a self-join on the 'df_message' DataFrame where 'date_sent' matches 'quote_id' in another row
 df_quotes = df_message.merge(df_message, left_on='date_sent', right_on='quote_id', suffixes=('_quote', '_original'))
@@ -122,6 +130,100 @@ df_quotes['to'] = df_quotes['to'].map(recipient_id_to_name)
 df_quotes = df_quotes[['from', 'response_timestamp', 'response_text', 'to', 'quoted_message_timestamp', 'quoted_text']]
 
 # Calculate the time difference between the response and the quoted message
-df_quotes['time_diff'] = df_quotes['response_timestamp'] - df_quotes['quoted_message_timestamp']
+df_quotes['time_diff'] = (df_quotes['response_timestamp'] - df_quotes['quoted_message_timestamp']) / 1000
 
 df_quotes.head()
+
+
+
+
+
+
+# Use the 75th percentile as the half life constant. Arbitrarily chosen as this will ensure most people who respond
+# within a few minutes get near full credit, and then
+half_life = df_quotes["time_diff"].quantile(0.75)
+
+# Calculate the decay constant
+decay_constant = np.log(2) / half_life
+
+quote_base_value = 2
+# Calculate the weight using the exponential decay function (2 is arbitrary max value of reactions, will adjust later)
+df_quotes['weight'] = quote_base_value * np.exp(-decay_constant * df_quotes['time_diff'])
+
+df_quotes.loc[df_quotes['weight'] < (quote_base_value * 0.1), 'weight'] = (quote_base_value * 0.1)
+
+df_quotes.head()
+
+
+
+
+
+
+
+
+message_df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
+recipient_df = pd.read_csv(
+    "/Users/raymondpasek/Repos/among-friends/data/raw/recipient.csv"
+)
+
+df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message_small.csv")
+
+import polars as pl
+from polars import col
+
+
+def load_and_preprocess_data_polars(file_path):
+    # Load the data
+    df = pl.read_csv(file_path)
+
+    # Convert the 'date_sent' column to datetime
+    df = df.with_column(df['date_sent'].cast(pl.Datetime))
+
+    # Create two copies of the dataframe for comments and responses
+    df_comments = df.clone()
+    df_responses = df.clone()
+
+    # Rename the columns to match the requested format
+    df_comments = df_comments.rename({
+        'date_sent': 'comment_date_sent',
+        'from_recipient_id': 'from_recipient_id',
+        'body': 'comment_body'
+    })
+
+    df_responses = df_responses.rename({
+        'date_sent': 'response_date_sent',
+        'from_recipient_id': 'from_recipient_id',
+        'body': 'response_body'
+    })
+
+    # Sort 'df_comments' and 'df_responses' by 'date_sent'
+    df_comments = df_comments.sort('comment_date_sent')
+    df_responses = df_responses.sort('response_date_sent')
+
+    return df_comments, df_responses
+
+
+def perform_self_join_polars(df_comments, df_responses):
+    # Perform the self join operation where a response is strictly after a comment and within 10 minutes
+    df_self_join = df_comments.join(
+        df_responses,
+        left_on=['from_recipient_id', 'comment_date_sent'],
+        right_on=['from_recipient_id', 'response_date_sent'],
+        how='left'
+    )
+
+    df_self_join = df_self_join.filter(col('response_date_sent').is_not_null() & (
+                col('response_date_sent') - col('comment_date_sent') <= pl.timedelta(minutes=10)))
+
+    # Filter out rows where a chat participant responded to themselves
+    df_self_join = df_self_join.filter(col('comment_id') != col('response_id'))
+
+    # Filter out rows where a comment doesn't have a response
+    df_self_join = df_self_join.filter(col('response_body').is_not_null())
+
+    return df_self_join
+
+
+df_comments, df_responses = load_and_preprocess_data_polars("/Users/raymondpasek/Repos/among-friends/data/raw/message_small.csv")
+df_self_join = perform_self_join_polars(df_comments, df_responses)
+df_self_join.head(10)
