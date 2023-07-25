@@ -156,143 +156,90 @@ df_quotes.head()
 
 
 
+import polars as pl
+import pandas as pd
+from polars.functions import col
+import numpy as np
+
+df_group_membership = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/group_membership.csv")
+df_groups = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/groups.csv")
+
+# Merge the two dataframes on the group_id column
+df_merged = pd.merge(df_group_membership, df_groups, on='group_id')
+
+# Filter the dataframe to include only the group "BBBF"
+df_filtered = df_merged[df_merged['title'] == 'BBBF']
+
+# Calculate the number of distinct individuals in the group
+group_participants_n = df_filtered['recipient_id_x'].nunique()
 
 
+df_large = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
+# Filter out records where the body is missing text
+df_large = df_large[df_large['body'].notna()]
 
+# Filter out records where quote_author is not 0
+df_large = df_large[df_large['quote_author'] == 0]
 
+# Select the columns that are found in message_small.csv
+df_large = df_large[['_id', 'date_sent', 'from_recipient_id', 'body']]
 
-message_df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
-recipient_df = pd.read_csv(
-    "/Users/raymondpasek/Repos/among-friends/data/raw/recipient.csv"
+# Convert the pandas dataframe to a polars dataframe
+df_polars = pl.DataFrame(df_large)
+
+# Sort the dataframe by the date_sent column
+df_polars = df_polars.sort('date_sent')
+
+# Rename the columns in the original dataframe
+df_polars.columns = ['comment_id', 'comment_date_sent', 'comment_from_recipient_id', 'comment_body']
+
+# Create a list to store the new dataframes
+dfs = []
+
+# Iterate over the rows of the dataframe
+for i in range(len(df_polars)):
+    # Get the next rows
+    next_rows = df_polars.slice(i + 1, len(df_polars) - i - 1)
+
+    # Filter the rows where comment_from_recipient_id is not equal to response_from_recipient_id
+    next_rows = next_rows.filter(col('comment_from_recipient_id') != df_polars[i]['comment_from_recipient_id'])
+
+    # Get the first n number of rows for each comment, where n is equal the number of group_participants
+    next_rows = next_rows.slice(0, min(group_participants_n, len(next_rows)))
+
+    for j in range(len(next_rows)):
+        # Rename the columns of the next row before concatenation
+        next_row = next_rows.slice(j, 1)
+        next_row.columns = ['response_id', 'response_date_sent', 'response_from_recipient_id', 'response_body']
+
+        # Stack the current row and the next row horizontally
+        new_df = pl.concat([df_polars.slice(i, 1), next_row], how='horizontal')
+
+        # Append the new dataframe to the list
+        dfs.append(new_df)
+
+# Concatenate all the dataframes vertically to get the final dataframe
+df_final_polars = pl.concat(dfs, how='vertical')
+
+# Subtract the comment_date_sent value from the response_date_sent value, convert to seconds, and assign a new column name
+df_final_polars = df_final_polars.with_columns(
+    (pl.col('response_date_sent') - pl.col('comment_date_sent')).alias('time_diff') / 1000
 )
 
-df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message_small.csv")
-
-import polars as pl
-from polars import col
-import pandas as pd
-import datetime
-
-def load_and_preprocess_data_polars(file_path):
-    # Load the data
-    df = pl.read_csv(file_path)
-
-    # # Convert the 'date_sent' column to datetime
-    # df = df.with_columns(
-    #     pl.col("date_sent").apply(lambda x: datetime.datetime.fromtimestamp(x / 1000), return_dtype=pl.Datetime).alias(
-    #         "date_sent"))
-
-    # Create two copies of the dataframe for comments and responses
-    df_comments = df.clone()
-    df_responses = df.clone()
-
-    # Rename the columns to match the requested format
-    df_comments = df_comments.rename({
-        '_id': 'comment_id',
-        'date_sent': 'comment_date_sent',
-        'from_recipient_id': 'from_recipient_id',
-        'body': 'comment_body'
-    })
-
-    df_responses = df_responses.rename({
-        '_id': 'response_id',
-        'date_sent': 'response_date_sent',
-        'from_recipient_id': 'from_recipient_id',
-        'body': 'response_body'
-    })
-
-    # Sort 'df_comments' and 'df_responses' by 'date_sent'
-    df_comments = df_comments.sort('comment_date_sent')
-    df_responses = df_responses.sort('response_date_sent')
-
-    return df_comments, df_responses
+# Convert the final Polars dataframe to a pandas dataframe and get the first 100 rows
+df_final_pandas = df_final_polars.to_pandas()
 
 
-def perform_self_join_polars(df_comments, df_responses):
+# Use the 75th percentile as the half life constant. Arbitrarily chosen as this will ensure most people who respond
+# within a few minutes get near full credit, and then
+half_life = df_final_pandas["time_diff"].quantile(0.75)
+
+# Calculate the decay constant
+decay_constant = np.log(2) / half_life
+
+response_base_value = 1
+# Calculate the weight using the exponential decay function (1 is arbitrary max value of reactions, will adjust later)
+df_final_pandas['weight'] = response_base_value * np.exp(-decay_constant * df_final_pandas['time_diff'])
 
 
-    #####  COMMENT AND RESPONSE COLUMNS ARE REVSERSED!!! FIX THIS!
-
-    # Perform the self join operation where a response is strictly after a comment and within 10 minutes
-    df_self_join = df_comments.join(
-        df_responses,
-        on=['from_recipient_id'],
-        how='left'
-    )
-
-    df_self_join = df_self_join.with_columns([
-        pl.when(col('response_date_sent').is_not_null() &
-                (col('response_date_sent').cast(pl.Int64) - col('comment_date_sent').cast(pl.Int64) <= 600))
-        .then(1).otherwise(0).alias('flag')
-    ])
-
-    # Filter out rows where a chat participant responded to themselves
-    df_self_join = df_self_join.filter(col('comment_id') != col('response_id'))
-
-    # Filter out rows where a comment doesn't have a response
-    df_self_join = df_self_join.filter(col('response_body').is_not_null())
-
-    # Filter the dataframe to only include the rows where flag = 1
-    df_self_join = df_self_join.filter(col('flag') == 1)
-
-    df_self_join = df_self_join.with_columns((df_self_join['comment_date_sent'] - df_self_join['response_date_sent']).alias('time_diff'))
-
-    df_self_join = df_self_join.with_columns((df_self_join['time_diff'] / 1000).alias('time_diff'))
-
-    return df_self_join
-
-
-df_comments, df_responses = load_and_preprocess_data_polars("/Users/raymondpasek/Repos/among-friends/data/raw/message_small.csv")
-df_self_join = perform_self_join_polars(df_comments, df_responses)
-df_self_join.head(10)
-
-
-foo = df_self_join.slice(0,20).to_pandas()
-
-
-
-
-import polars as pl
-
-# Assuming you have a Polars DataFrame named 'df' with the i64 column to be divided by 1000
-df = pl.DataFrame({
-    'column_to_divide': [2000, 5000, 10000, 8000]
-})
-
-# Divide the i64 column by 1000 and create a new column 'result'
-df = df.with_columns((df['column_to_divide'] / 1000).alias('result'))
-
-# Display the resulting DataFrame
-print(df)
-
-
-
-
-
-
-type(df_self_join)
-
-def get_size(bytes, suffix="B"):
-    # Scale bytes to its proper format
-    factor = 1024
-    for unit in ["", "K", "M", "G", "T", "P"]:
-        if bytes < factor:
-            return f"{bytes:.2f}{unit}{suffix}"
-        bytes /= factor
-
-# Assuming `df` is your Polars dataframe
-import sys
-
-# Before conversion
-polars_size = sys.getsizeof(df_self_join)
-polars_size_friendly = get_size(polars_size)
-
-# Convert to pandas
-df_pandas = df_self_join.to_pandas()
-
-# After conversion
-pandas_size = sys.getsizeof(df_pandas)
-pandas_size_friendly = get_size(pandas_size)
-
-print(f"Size of Polars DataFrame: {polars_size_friendly}")
-print(f"Size of Pandas DataFrame: {pandas_size_friendly}")
+df_final_pandas.head()
