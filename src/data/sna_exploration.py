@@ -170,14 +170,17 @@ df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message_small
 
 import polars as pl
 from polars import col
-
+import pandas as pd
+import datetime
 
 def load_and_preprocess_data_polars(file_path):
     # Load the data
     df = pl.read_csv(file_path)
 
-    # Convert the 'date_sent' column to datetime
-    df = df.with_column(df['date_sent'].cast(pl.Datetime))
+    # # Convert the 'date_sent' column to datetime
+    # df = df.with_columns(
+    #     pl.col("date_sent").apply(lambda x: datetime.datetime.fromtimestamp(x / 1000), return_dtype=pl.Datetime).alias(
+    #         "date_sent"))
 
     # Create two copies of the dataframe for comments and responses
     df_comments = df.clone()
@@ -185,12 +188,14 @@ def load_and_preprocess_data_polars(file_path):
 
     # Rename the columns to match the requested format
     df_comments = df_comments.rename({
+        '_id': 'comment_id',
         'date_sent': 'comment_date_sent',
         'from_recipient_id': 'from_recipient_id',
         'body': 'comment_body'
     })
 
     df_responses = df_responses.rename({
+        '_id': 'response_id',
         'date_sent': 'response_date_sent',
         'from_recipient_id': 'from_recipient_id',
         'body': 'response_body'
@@ -204,16 +209,22 @@ def load_and_preprocess_data_polars(file_path):
 
 
 def perform_self_join_polars(df_comments, df_responses):
+
+
+    #####  COMMENT AND RESPONSE COLUMNS ARE REVSERSED!!! FIX THIS!
+
     # Perform the self join operation where a response is strictly after a comment and within 10 minutes
     df_self_join = df_comments.join(
         df_responses,
-        left_on=['from_recipient_id', 'comment_date_sent'],
-        right_on=['from_recipient_id', 'response_date_sent'],
+        on=['from_recipient_id'],
         how='left'
     )
 
-    df_self_join = df_self_join.filter(col('response_date_sent').is_not_null() & (
-                col('response_date_sent') - col('comment_date_sent') <= pl.timedelta(minutes=10)))
+    df_self_join = df_self_join.with_columns([
+        pl.when(col('response_date_sent').is_not_null() &
+                (col('response_date_sent').cast(pl.Int64) - col('comment_date_sent').cast(pl.Int64) <= 600))
+        .then(1).otherwise(0).alias('flag')
+    ])
 
     # Filter out rows where a chat participant responded to themselves
     df_self_join = df_self_join.filter(col('comment_id') != col('response_id'))
@@ -221,9 +232,67 @@ def perform_self_join_polars(df_comments, df_responses):
     # Filter out rows where a comment doesn't have a response
     df_self_join = df_self_join.filter(col('response_body').is_not_null())
 
+    # Filter the dataframe to only include the rows where flag = 1
+    df_self_join = df_self_join.filter(col('flag') == 1)
+
+    df_self_join = df_self_join.with_columns((df_self_join['comment_date_sent'] - df_self_join['response_date_sent']).alias('time_diff'))
+
+    df_self_join = df_self_join.with_columns((df_self_join['time_diff'] / 1000).alias('time_diff'))
+
     return df_self_join
 
 
 df_comments, df_responses = load_and_preprocess_data_polars("/Users/raymondpasek/Repos/among-friends/data/raw/message_small.csv")
 df_self_join = perform_self_join_polars(df_comments, df_responses)
 df_self_join.head(10)
+
+
+foo = df_self_join.slice(0,20).to_pandas()
+
+
+
+
+import polars as pl
+
+# Assuming you have a Polars DataFrame named 'df' with the i64 column to be divided by 1000
+df = pl.DataFrame({
+    'column_to_divide': [2000, 5000, 10000, 8000]
+})
+
+# Divide the i64 column by 1000 and create a new column 'result'
+df = df.with_columns((df['column_to_divide'] / 1000).alias('result'))
+
+# Display the resulting DataFrame
+print(df)
+
+
+
+
+
+
+type(df_self_join)
+
+def get_size(bytes, suffix="B"):
+    # Scale bytes to its proper format
+    factor = 1024
+    for unit in ["", "K", "M", "G", "T", "P"]:
+        if bytes < factor:
+            return f"{bytes:.2f}{unit}{suffix}"
+        bytes /= factor
+
+# Assuming `df` is your Polars dataframe
+import sys
+
+# Before conversion
+polars_size = sys.getsizeof(df_self_join)
+polars_size_friendly = get_size(polars_size)
+
+# Convert to pandas
+df_pandas = df_self_join.to_pandas()
+
+# After conversion
+pandas_size = sys.getsizeof(df_pandas)
+pandas_size_friendly = get_size(pandas_size)
+
+print(f"Size of Polars DataFrame: {polars_size_friendly}")
+print(f"Size of Pandas DataFrame: {pandas_size_friendly}")
