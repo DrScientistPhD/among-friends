@@ -1,7 +1,8 @@
-import pytest
 import pandas as pd
-from src.data.csv_reader import CSVReader
+import pytest
 from faker import Faker
+
+from src.data.csv_reader import CSVReader
 
 
 class TestCSVReader:
@@ -17,8 +18,11 @@ class TestCSVReader:
             str: CSV data as a string.
         """
         fake = Faker()
-        header = ['Name', 'Age', 'City']
-        rows = [",".join([fake.name(), str(fake.random_int(18, 65)), fake.city()]) for _ in range(10)]
+        header = ["Name", "Age", "City"]
+        rows = [
+            ",".join([fake.name(), str(fake.random_int(18, 65)), fake.city()])
+            for _ in range(10)
+        ]
         return "\n".join([",".join(header)] + rows)
 
     @pytest.fixture(autouse=True)

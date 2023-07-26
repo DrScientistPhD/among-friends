@@ -19,12 +19,15 @@ class CSVReader:
         """
         # Using isinstance to validate the input argument.
         if not isinstance(file_name, str):
-            raise ValueError("file_path must be a string")
+            raise TypeError("file_path must be a string")
 
         try:
             # Reading the CSV file into a DataFrame.
-            dataframe = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv" + file_name)
+            dataframe = pd.read_csv(
+                "/Users/raymondpasek/Repos/among-friends/data/raw/message.csv"
+                + file_name
+            )
 
             return dataframe
         except pd.errors.EmptyDataError as e:
-            raise ValueError(f"Error while reading the CSV file: {e}")
+            raise Exception(f"Error while reading the CSV file: {e}")

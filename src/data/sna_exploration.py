@@ -1,6 +1,7 @@
 import emoji
 import numpy as np
 import pandas as pd
+import warnings
 
 # First, let's read in the necessary CSV files as Pandas DataFrames
 df_message = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
@@ -11,17 +12,33 @@ df_reaction = pd.read_csv(
     "/Users/raymondpasek/Repos/among-friends/data/raw/reaction.csv"
 )
 
-# Create a dictionary to map recipient_id to system_given_name in df_recipient
-recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
+# # Create a dictionary to map recipient_id to system_given_name in df_recipient
+# recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
+#
+# # Update the 'author_name' and 'quote_recipient_name' columns in df_message to use profile_joined_name
+# df_message["author_name"] = df_message["from_recipient_id"].map(recipient_id_to_name)
+# df_message["quote_recipient_name"] = df_message["quote_author"].map(
+#     recipient_id_to_name
+# )
 
-# Update the 'author_name' and 'quote_recipient_name' columns in df_message to use profile_joined_name
-df_message["author_name"] = df_message["from_recipient_id"].map(recipient_id_to_name)
-df_message["quote_recipient_name"] = df_message["quote_author"].map(
-    recipient_id_to_name
-)
+# # Map 'author_id' in df_reaction to get the author's full name
+# df_reaction["author_name"] = df_reaction["author_id"].map(recipient_id_to_name)
 
-# Map 'author_id' in df_reaction to get the author's full name
-df_reaction["author_name"] = df_reaction["author_id"].map(recipient_id_to_name)
+raw_df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
+
+columns_to_filter = ["_id", "thread_id", "form_recipient_id", "quote_id", "date_sent", "body"]
+
+renamed_df = raw_df.rename(columns={
+    "_id": "comment_id",
+    "thread_id": "comment_thread_id",
+    "from_recipient_id": "comment_recipient_id",
+    "date_sent": "comment_date_sent",
+    "body": "comment_body"
+})
+
+select_df = renamed_df[columns_to_filter].copy()
+
+
 
 # Merge df_message and df_reaction on 'message_id' to associate reactions with messages
 df_message_reaction = pd.merge(
