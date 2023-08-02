@@ -13,20 +13,6 @@ class TestRecipientMapper:
     Test class for the RecipientMapper class.
     """
 
-    @pytest.fixture
-    def fake_recipient_data(self):
-        """
-        Fixture to generate fake recipient data as a pandas DataFrame for testing.
-        Returns:
-            pd.DataFrame: Fake recipient data.
-        """
-        fake = Faker()
-        data = {
-            "_id": [fake.random_int(1, 100) for _ in range(10)],
-            "profile_joined_name": [fake.name() for _ in range(10)],
-        }
-        return pd.DataFrame(data)
-
     @pytest.fixture(autouse=True)
     def setup_class(self):
         """
@@ -34,6 +20,19 @@ class TestRecipientMapper:
         """
         self.fake = Faker()
         self.recipient_mapper = RecipientMapper()
+
+    @pytest.fixture
+    def fake_recipient_data(self):
+        """
+        Fixture to generate fake recipient data as a pandas DataFrame for testing.
+        Returns:
+            pd.DataFrame: Fake recipient data.
+        """
+        data = {
+            "_id": [self.fake.random_int(1, 100) for _ in range(10)],
+            "profile_joined_name": [self.fake.name() for _ in range(10)],
+        }
+        return pd.DataFrame(data)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_create_recipient_id_to_name_mapping(self, iteration, fake_recipient_data):
