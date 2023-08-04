@@ -18,15 +18,16 @@ class EmojiTranslator:
         Raises:
             Exception: If there's an error during the emoji translation process.
         """
-        try:
-            validate_data_types(text, str, "text")
+        validate_data_types(text, str, "text")
 
+        try:
             translated_text = []
             for emo in emoji.demojize(text).split():
                 try:
                     translated_emo = emoji.emojize(emo)
                     translated_text.append(translated_emo)
                 except AttributeError:
+                    # If an emoji doesn't have a textual representation, replace it with a placeholder.
                     translated_text.append("<emoji_not_translated>")
 
             return " ".join(translated_text)

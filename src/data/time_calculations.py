@@ -1,19 +1,21 @@
 import numpy as np
 import pandas as pd
+import warnings
 from src.data.data_validation import (validate_columns_in_dataframe,
                              validate_data_types, validate_dataframe)
 
 
 class TimeCalculations:
     @staticmethod
-    def calculate_time_diff(df: pd.DataFrame, time1: str, time2: str) -> pd.DataFrame:
+    def calculate_time_diff(df: pd.DataFrame, timestamp1: str, timestamp2: str) -> pd.DataFrame:
         """
-        Calculates the time difference between two time columns of a DataFrame.
+        Calculates the time difference between two timestamps and stores the result in a new column 'time_diff'.
+        The time difference is given in seconds. A warning is raised if any time difference is negative.
 
         Args:
             df (pd.DataFrame): The DataFrame containing the time columns.
-            time1 (str): The name of the first time column.
-            time2 (str): The name of the second time column.
+            timestamp1 (str): The name of the first time column.
+            timestamp2 (str): The name of the second time column.
 
         Returns:
             pd.DataFrame: The original DataFrame with an added 'time_diff' column.
@@ -21,34 +23,58 @@ class TimeCalculations:
         Raises:
             Exception: If there's an error during the time difference calculation.
         """
+        validate_dataframe(df)
+        validate_data_types(timestamp1, str, "timestamp1")
+        validate_data_types(timestamp2, str, "timestamp2")
+        validate_columns_in_dataframe(df, [timestamp1, timestamp2])
+
         try:
-            validate_dataframe(df)
-            validate_columns_in_dataframe(df, [time1, time2])
-
-            df["time_diff"] = (df[time1] - df[time2]).dt.total_seconds()
-            return df
-
+            df["time_diff"] = df.apply(
+                lambda row: 0
+                if row[timestamp1] == row[timestamp2]
+                else (row[timestamp1] - row[timestamp2]) / 1000,
+                axis=1,
+            )
         except Exception as e:
             raise Exception(f"Failed to calculate time difference: {str(e)}")
 
+        if (df["time_diff"] < 0).any():
+            warnings.warn(
+                "There are negative time differences in the data", UserWarning
+            )
+
+        return df
+
     @staticmethod
-    def calculate_decay_constant(half_life: float) -> float:
+    def calculate_decay_constant(df: pd.DataFrame, column: str, percentile: float = 0.75) -> float:
         """
-        Calculates the decay constant given a half-life.
+        Calculates the decay constant based on a specified percentile of a specified column in the given DataFrame.
 
         Args:
-            half_life (float): The half-life used to calculate the decay constant.
+            df (pd.DataFrame): DataFrame with at least one numerical column.
+            column (str): Name of the column based on which the decay constant is to be calculated.
+            percentile (float, optional): Percentile value to be used in the decay constant calculation.
+                Must be between 0 and 1 (exclusive). Defaults to 0.75.
 
         Returns:
-            float: The calculated decay constant.
+            float: Decay constant calculated as log(2) divided by the specified percentile of the specified column.
 
         Raises:
+            ValueError: If percentile is not between 0 and 1.
             Exception: If there's an error during the decay constant calculation.
         """
-        try:
-            validate_data_types(half_life, (int, float), "half_life")
+        validate_dataframe(df)
+        validate_data_types(column, str, "column")
+        validate_columns_in_dataframe(df, [column])
+        validate_data_types(percentile, (float, int), "percentile")
 
-            decay_constant = -np.log(2) / half_life
+        # Additional validation to ensure percentile is between 0 and 1
+        if not 0 <= percentile <= 1:
+            raise ValueError("percentile must be between 0 and 1")
+
+        try:
+            half_life = df[column].quantile(percentile)
+            decay_constant = np.log(2) / half_life
             return decay_constant
 
         except Exception as e:
@@ -56,28 +82,29 @@ class TimeCalculations:
 
     @staticmethod
     def calculate_weight(
-        df: pd.DataFrame, decay_constant: float, time_diff: str
+        df: pd.DataFrame, decay_constant: float, base_value: float
     ) -> pd.DataFrame:
         """
-        Calculates the weight of each row in a DataFrame based on a decay constant and time difference.
+        Calculates the weight using the exponential decay function.
 
         Args:
-            df (pd.DataFrame): The DataFrame containing the time difference column.
-            decay_constant (float): The decay constant used to calculate the weight.
-            time_diff (str): The name of the time difference column.
+            df (pd.DataFrame): DataFrame with at least a numerical column 'time_diff'.
+            decay_constant (float): Decay constant for the calculation.
+            base_value (float): Base value for the weight calculation.
 
         Returns:
-            pd.DataFrame: The original DataFrame with an added 'weight' column.
+            pd.DataFrame: Original DataFrame with an additional 'weight' column.
 
         Raises:
             Exception: If there's an error during the weight calculation.
         """
-        try:
-            validate_dataframe(df)
-            validate_columns_in_dataframe(df, [time_diff])
-            validate_data_types(decay_constant, (int, float), "decay_constant")
+        validate_dataframe(df)
+        validate_columns_in_dataframe(df, ["time_diff"])
+        validate_data_types(decay_constant, float, "decay_constant")
+        validate_data_types(base_value, float, "base_value")
 
-            df["weight"] = np.exp(decay_constant * df[time_diff])
+        try:
+            df["weight"] = base_value * np.exp(-decay_constant * df["time_diff"])
             return df
 
         except Exception as e:

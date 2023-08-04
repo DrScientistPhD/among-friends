@@ -29,7 +29,7 @@ def validate_columns_in_dataframe(df, columns):
     missing_columns = set(columns) - set(df.columns)
 
     if missing_columns:
-        raise ValueError(
+        raise KeyError(
             f"DataFrame is missing the following required columns: {missing_columns}"
         )
 

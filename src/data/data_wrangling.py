@@ -1,6 +1,6 @@
 import pandas as pd
 from src.data.data_validation import validate_columns_in_dataframe, validate_dataframe
-from emoji_translation import EmojiTranslator
+from src.data.emoji_translation import EmojiTranslator
 
 
 class MessageDataWrangler:
