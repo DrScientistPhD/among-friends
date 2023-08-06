@@ -1,3 +1,5 @@
+import warnings
+
 import emoji
 import numpy as np
 import pandas as pd
@@ -11,17 +13,41 @@ df_reaction = pd.read_csv(
     "/Users/raymondpasek/Repos/among-friends/data/raw/reaction.csv"
 )
 
-# Create a dictionary to map recipient_id to system_given_name in df_recipient
-recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
+# # Create a dictionary to map recipient_id to system_given_name in df_recipient
+# recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
+#
+# # Update the 'author_name' and 'quote_recipient_name' columns in df_message to use profile_joined_name
+# df_message["author_name"] = df_message["from_recipient_id"].map(recipient_id_to_name)
+# df_message["quote_recipient_name"] = df_message["quote_author"].map(
+#     recipient_id_to_name
+# )
 
-# Update the 'author_name' and 'quote_recipient_name' columns in df_message to use profile_joined_name
-df_message["author_name"] = df_message["from_recipient_id"].map(recipient_id_to_name)
-df_message["quote_recipient_name"] = df_message["quote_author"].map(
-    recipient_id_to_name
+# # Map 'author_id' in df_reaction to get the author's full name
+# df_reaction["author_name"] = df_reaction["author_id"].map(recipient_id_to_name)
+
+raw_df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
+
+columns_to_filter = [
+    "_id",
+    "thread_id",
+    "form_recipient_id",
+    "quote_id",
+    "date_sent",
+    "body",
+]
+
+renamed_df = raw_df.rename(
+    columns={
+        "_id": "comment_id",
+        "thread_id": "comment_thread_id",
+        "from_recipient_id": "comment_recipient_id",
+        "date_sent": "comment_date_sent",
+        "body": "comment_body",
+    }
 )
 
-# Map 'author_id' in df_reaction to get the author's full name
-df_reaction["author_name"] = df_reaction["author_id"].map(recipient_id_to_name)
+select_df = renamed_df[columns_to_filter].copy()
+
 
 # Merge df_message and df_reaction on 'message_id' to associate reactions with messages
 df_message_reaction = pd.merge(
@@ -88,16 +114,16 @@ decay_constant = np.log(2) / half_life
 
 reaction_base_value = 0.5
 # Calculate the weight using the exponential decay function (0.5 is arbitrary max value of reactions, will adjust later)
-df_social_network['weight'] = reaction_base_value * np.exp(-decay_constant * df_social_network['time_diff'])
+df_social_network["weight"] = reaction_base_value * np.exp(
+    -decay_constant * df_social_network["time_diff"]
+)
 
-df_social_network.loc[df_social_network['weight'] < (reaction_base_value * 0.1), 'weight'] = (reaction_base_value * 0.1)
+df_social_network.loc[
+    df_social_network["weight"] < (reaction_base_value * 0.1), "weight"
+] = (reaction_base_value * 0.1)
 
 
 df_social_network.head()
-
-
-
-
 
 
 # weights of quote texts
@@ -109,34 +135,106 @@ df_recipient = pd.read_csv(
 # Create a dictionary to map recipient_id to profile_joined_name in df_recipient
 recipient_id_to_name = df_recipient.set_index("_id")["profile_joined_name"].to_dict()
 
-# Perform a self-join on the 'df_message' DataFrame where 'date_sent' matches 'quote_id' in another row
-df_quotes = df_message.merge(df_message, left_on='date_sent', right_on='quote_id', suffixes=('_quote', '_original'))
 
-# Rename the columns for clarity
-df_quotes.rename(columns={
-    'from_recipient_id_original': 'from',
-    'from_recipient_id_quote': 'to',
-    'date_sent_original': 'response_timestamp',
-    'date_sent_quote': 'quoted_message_timestamp',
-    'body_original': 'response_text',
-    'body_quote': 'quoted_text',
-}, inplace=True)
+message_df = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
 
-# Map recipient ids to names
-df_quotes['from'] = df_quotes['from'].map(recipient_id_to_name)
-df_quotes['to'] = df_quotes['to'].map(recipient_id_to_name)
+quotation_df = message_df.rename(
+    columns={
+        "_id": "quotation_id",
+        "date_sent": "quotation_date_sent",
+        "thread_id": "quotation_thread_id",
+        "from_recipient_id": "quotation_from_recipient_id",
+        "body": "quotation_body",
+    }
+)
 
-# Select only the required columns
-df_quotes = df_quotes[['from', 'response_timestamp', 'response_text', 'to', 'quoted_message_timestamp', 'quoted_text']]
+quotation_columns_to_filter = [
+    "quotation_id",
+    "quotation_date_sent",
+    "quotation_thread_id",
+    "quotation_from_recipient_id",
+    "quotation_body",
+]
+
+quotation_slim_df = quotation_df[quotation_columns_to_filter].copy()
+
+response_df = df_message.copy().rename(
+    columns={
+        "_id": "response_id",
+        "date_sent": "response_date_sent",
+        "thread_id": "response_thread_id",
+        "from_recipient_id": "response_from_recipient_id",
+        "body": "response_body",
+    }
+)
+
+response_columns_to_filer = [
+    "response_id",
+    "response_date_sent",
+    "response_thread_id",
+    "response_from_recipient_id",
+    "response_body",
+    "quote_id",
+]
+
+response_slim_df = response_df[response_columns_to_filer].copy()
+
+
+quotation_response_df = quotation_slim_df.merge(
+    response_slim_df, left_on="quotation_date_sent", right_on="quote_id"
+)
+
 
 # Calculate the time difference between the response and the quoted message
-df_quotes['time_diff'] = (df_quotes['response_timestamp'] - df_quotes['quoted_message_timestamp']) / 1000
+quotation_response_df["time_diff"] = (
+    quotation_response_df["response_date_sent"]
+    - quotation_response_df["quotation_date_sent"]
+) / 1000
+
+
+# Perform a self-join on the 'df_message' DataFrame where 'date_sent' matches 'quote_id' in another row
+df_quotes = df_message.merge(
+    df_message,
+    left_on="date_sent",
+    right_on="quote_id",
+    suffixes=("_quote", "_original"),
+)
+
+# Rename the columns for clarity
+df_quotes.rename(
+    columns={
+        "from_recipient_id_original": "from",
+        "from_recipient_id_quote": "to",
+        "date_sent_original": "response_timestamp",
+        "date_sent_quote": "quoted_message_timestamp",
+        "body_original": "response_text",
+        "body_quote": "quoted_text",
+    },
+    inplace=True,
+)
+
+# Map recipient ids to names
+df_quotes["from"] = df_quotes["from"].map(recipient_id_to_name)
+df_quotes["to"] = df_quotes["to"].map(recipient_id_to_name)
+
+# Select only the required columns
+df_quotes = df_quotes[
+    [
+        "from",
+        "response_timestamp",
+        "response_text",
+        "to",
+        "quoted_message_timestamp",
+        "quoted_text",
+    ]
+]
+
+# Calculate the time difference between the response and the quoted message
+df_quotes["time_diff"] = (
+    df_quotes["response_timestamp"] - df_quotes["quoted_message_timestamp"]
+) / 1000
 
 df_quotes.head()
-
-
-
-
 
 
 # Use the 75th percentile as the half life constant. Arbitrarily chosen as this will ensure most people who respond
@@ -148,50 +246,60 @@ decay_constant = np.log(2) / half_life
 
 quote_base_value = 2
 # Calculate the weight using the exponential decay function (2 is arbitrary max value of reactions, will adjust later)
-df_quotes['weight'] = quote_base_value * np.exp(-decay_constant * df_quotes['time_diff'])
+df_quotes["weight"] = quote_base_value * np.exp(
+    -decay_constant * df_quotes["time_diff"]
+)
 
-df_quotes.loc[df_quotes['weight'] < (quote_base_value * 0.1), 'weight'] = (quote_base_value * 0.1)
+df_quotes.loc[df_quotes["weight"] < (quote_base_value * 0.1), "weight"] = (
+    quote_base_value * 0.1
+)
 
 df_quotes.head()
 
 
-
-import polars as pl
-import pandas as pd
-from polars.functions import col
 import numpy as np
+import pandas as pd
+import polars as pl
+from polars.functions import col
 
-df_group_membership = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/group_membership.csv")
+df_group_membership = pd.read_csv(
+    "/Users/raymondpasek/Repos/among-friends/data/raw/group_membership.csv"
+)
 df_groups = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/groups.csv")
 
 # Merge the two dataframes on the group_id column
-df_merged = pd.merge(df_group_membership, df_groups, on='group_id')
+df_merged = pd.merge(df_group_membership, df_groups, on="group_id")
 
 # Filter the dataframe to include only the group "BBBF"
-df_filtered = df_merged[df_merged['title'] == 'BBBF']
+df_filtered = df_merged[df_merged["title"] == "BBBF"]
 
 # Calculate the number of distinct individuals in the group
-group_participants_n = df_filtered['recipient_id_x'].nunique()
+group_participants_n = df_filtered["recipient_id_x"].nunique()
 
 
 df_large = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")
 # Filter out records where the body is missing text
-df_large = df_large[df_large['body'].notna()]
+df_large = df_large[df_large["body"].notna()]
 
 # Filter out records where quote_author is not 0
-df_large = df_large[df_large['quote_author'] == 0]
+df_large = df_large[df_large["quote_author"] == 0]
 
 # Select the columns that are found in message_small.csv
-df_large = df_large[['_id', 'date_sent', 'from_recipient_id', 'body']]
+df_large = df_large[["_id", "date_sent", "from_recipient_id", "body"]]
 
 # Convert the pandas dataframe to a polars dataframe
 df_polars = pl.DataFrame(df_large)
 
 # Sort the dataframe by the date_sent column
-df_polars = df_polars.sort('date_sent')
+df_polars = df_polars.sort("date_sent")
 
 # Rename the columns in the original dataframe
-df_polars.columns = ['comment_id', 'comment_date_sent', 'comment_from_recipient_id', 'comment_body']
+df_polars.columns = [
+    "comment_id",
+    "comment_date_sent",
+    "comment_from_recipient_id",
+    "comment_body",
+]
 
 # Create a list to store the new dataframes
 dfs = []
@@ -202,7 +310,9 @@ for i in range(len(df_polars)):
     next_rows = df_polars.slice(i + 1, len(df_polars) - i - 1)
 
     # Filter the rows where comment_from_recipient_id is not equal to response_from_recipient_id
-    next_rows = next_rows.filter(col('comment_from_recipient_id') != df_polars[i]['comment_from_recipient_id'])
+    next_rows = next_rows.filter(
+        col("comment_from_recipient_id") != df_polars[i]["comment_from_recipient_id"]
+    )
 
     # Get the first n number of rows for each comment, where n is equal the number of group_participants
     next_rows = next_rows.slice(0, min(group_participants_n, len(next_rows)))
@@ -210,20 +320,26 @@ for i in range(len(df_polars)):
     for j in range(len(next_rows)):
         # Rename the columns of the next row before concatenation
         next_row = next_rows.slice(j, 1)
-        next_row.columns = ['response_id', 'response_date_sent', 'response_from_recipient_id', 'response_body']
+        next_row.columns = [
+            "response_id",
+            "response_date_sent",
+            "response_from_recipient_id",
+            "response_body",
+        ]
 
         # Stack the current row and the next row horizontally
-        new_df = pl.concat([df_polars.slice(i, 1), next_row], how='horizontal')
+        new_df = pl.concat([df_polars.slice(i, 1), next_row], how="horizontal")
 
         # Append the new dataframe to the list
         dfs.append(new_df)
 
 # Concatenate all the dataframes vertically to get the final dataframe
-df_final_polars = pl.concat(dfs, how='vertical')
+df_final_polars = pl.concat(dfs, how="vertical")
 
 # Subtract the comment_date_sent value from the response_date_sent value, convert to seconds, and assign a new column name
 df_final_polars = df_final_polars.with_columns(
-    (pl.col('response_date_sent') - pl.col('comment_date_sent')).alias('time_diff') / 1000
+    (pl.col("response_date_sent") - pl.col("comment_date_sent")).alias("time_diff")
+    / 1000
 )
 
 # Convert the final Polars dataframe to a pandas dataframe and get the first 100 rows
@@ -239,7 +355,27 @@ decay_constant = np.log(2) / half_life
 
 response_base_value = 1
 # Calculate the weight using the exponential decay function (1 is arbitrary max value of reactions, will adjust later)
-df_final_pandas['weight'] = response_base_value * np.exp(-decay_constant * df_final_pandas['time_diff'])
+df_final_pandas["weight"] = response_base_value * np.exp(
+    -decay_constant * df_final_pandas["time_diff"]
+)
 
 
 df_final_pandas.head()
+
+
+# Calculate the time difference between the response and the quoted message
+quotation_response_df["time_diff"] = (
+    quotation_response_df["response_date_sent"]
+    - quotation_response_df["quotation_date_sent"]
+) / 1000
+
+# Calculate the time difference between the response and the quoted message
+df_quotes["time_diff"] = (
+    df_quotes["response_timestamp"] - df_quotes["quoted_message_timestamp"]
+) / 1000
+
+
+# Calculate the time difference in seconds
+df_social_network["time_diff"] = (
+    df_social_network["reaction_timestamp"] - df_social_network["message_timestamp"]
+) / 1000

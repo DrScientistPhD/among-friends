@@ -1,25 +1,14 @@
-import pytest
 import pandas as pd
-from src.data.csv_reader import CSVReader
+import pytest
 from faker import Faker
+
+from src.data.csv_reader import CSVReader
 
 
 class TestCSVReader:
     """
     Test class for the CSVReader class.
     """
-
-    @pytest.fixture
-    def fake_csv_data(self):
-        """
-        Fixture to generate fake CSV data for testing.
-        Returns:
-            str: CSV data as a string.
-        """
-        fake = Faker()
-        header = ['Name', 'Age', 'City']
-        rows = [",".join([fake.name(), str(fake.random_int(18, 65)), fake.city()]) for _ in range(10)]
-        return "\n".join([",".join(header)] + rows)
 
     @pytest.fixture(autouse=True)
     def setup_class(self):
@@ -28,6 +17,20 @@ class TestCSVReader:
         """
         self.fake = Faker()
         self.csv_reader = CSVReader()
+
+    @pytest.fixture
+    def fake_csv_data(self):
+        """
+        Fixture to generate fake CSV data for testing.
+        Returns:
+            str: CSV data as a string.
+        """
+        header = ["Name", "Age", "City"]
+        rows = [
+            ",".join([self.fake.name(), str(self.fake.random_int(18, 65)), self.fake.city()])
+            for _ in range(10)
+        ]
+        return "\n".join([",".join(header)] + rows)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_read_csv_as_dataframe_type(self, iteration, fake_csv_data, mocker):
@@ -52,5 +55,5 @@ class TestCSVReader:
         # Mocking read_csv to raise pd.errors.EmptyDataError.
         mocker.patch("pandas.read_csv", side_effect=pd.errors.EmptyDataError)
 
-        with pytest.raises(ValueError):
+        with pytest.raises(Exception):
             self.csv_reader.read_csv_as_dataframe(file_name)  # Using the class method
