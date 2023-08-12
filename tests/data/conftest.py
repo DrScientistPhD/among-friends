@@ -6,7 +6,7 @@ fake = Faker()
 
 
 @pytest.fixture
-def fake_dataframe_messages():
+def fake_messages_df():
     """
     Fixture to generate fake DataFrame data for testing messages DataFrame.
 
@@ -145,5 +145,39 @@ def fake_dataframe_reactions():
                 for _ in range(n)
             ],
             "date_sent": date_sent,
+        }
+    )
+
+
+@pytest.fixture
+def fake_dataframe_reactions_slim():
+    """
+    Fixture to generate fake DataFrame data for testing a slim reactions DataFrame.
+
+    Returns:
+        pd.DataFrame: Fake DataFrame with random data.
+    """
+
+    n = 100
+
+    date_sent = [
+        fake.random_int(min=1673137959372, max=1673378972279) for _ in range(n)
+    ]
+
+    # TODO: This can be improved by better and more consistent randomized data
+    return pd.DataFrame(
+        {
+            "reaction_id": [fake.random_int() for _ in range(n)],
+            "message_id": [fake.random_int() for _ in range(n)],
+            "reaction_author_id": [fake.random_int() for _ in range(n)],
+            "emoji": [
+                fake.random_element(elements=("😍", "🐍", "❤️", "👍", "🙌"))
+                for _ in range(n)
+            ],
+            "reaction_date_sent": date_sent,
+            "reaction_translation": [
+                fake.random_element(elements=("heart_face", "snake", "heart", "thumbs_up", "raise"))
+                for _ in range(n)
+            ]
         }
     )

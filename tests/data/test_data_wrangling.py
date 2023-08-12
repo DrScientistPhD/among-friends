@@ -63,15 +63,15 @@ class TestMessageDataWrangler:
         self.message_data_wrangler = MessageDataWrangler()
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_filter_and_rename_messages_df(self, iteration, fake_dataframe_messages):
+    def test_filter_and_rename_messages_df(self, iteration, fake_messages_df):
         """
         Test to check if filter_and_rename_messages_df() filters and renames columns correctly.
         """
         # Make a copy of the DataFrame before renaming columns
-        df_copy = fake_dataframe_messages.copy()
+        df_copy = fake_messages_df.copy()
 
         # Rename columns in the fake DataFrame
-        fake_dataframe_messages.rename(
+        fake_messages_df.rename(
             columns={
                 "_id": "comment_id",
                 "thread_id": "comment_thread_id",
@@ -220,6 +220,38 @@ class TestReactionDataWrangler:
         # Passing None as input
         with pytest.raises(TypeError):
             self.reaction_data_wrangler.filter_and_rename_reactions_df(None)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_merge_message_with_reaction_valid(self, fake_filtered_and_renamed_dataframe, fake_dataframe_reactions_slim, iteration):
+        """
+        Test to check if the function correctly merges two dataframes with valid input.
+        """
+        result = self.reaction_data_wrangler.merge_message_with_reaction(fake_filtered_and_renamed_dataframe, fake_dataframe_reactions_slim)
+        assert isinstance(result, pd.DataFrame)
+        assert "comment_id" in result.columns
+        assert "message_id" in result.columns
+        assert len(result.columns) == len(fake_filtered_and_renamed_dataframe.columns) + len(fake_dataframe_reactions_slim.columns)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_merge_message_with_reaction_invalid(self, iteration):
+        """
+        Test to check if the function raises appropriate exceptions with invalid input.
+        """
+        # Passing a non-DataFrame input for message dataframe
+        with pytest.raises(TypeError):
+            self.reaction_data_wrangler.merge_message_with_reaction("invalid_input", pd.DataFrame())
+
+        # Passing a non-DataFrame input for reaction dataframe
+        with pytest.raises(TypeError):
+            self.reaction_data_wrangler.merge_message_with_reaction(pd.DataFrame(), "invalid_input")
+
+        # Passing DataFrames without required columns
+        invalid_message_df = pd.DataFrame({"invalid_column": [1, 2, 3]})
+        invalid_reaction_df = pd.DataFrame({"another_invalid_column": [1, 2, 3]})
+        with pytest.raises(KeyError):
+            self.reaction_data_wrangler.merge_message_with_reaction(invalid_message_df, pd.DataFrame())
+        with pytest.raises(KeyError):
+            self.reaction_data_wrangler.merge_message_with_reaction(pd.DataFrame(), invalid_reaction_df)
 
 
 class TestQuotationResponseDataWrangler:
