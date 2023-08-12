@@ -2,11 +2,51 @@ import pandas as pd
 import pytest
 from faker import Faker
 
-from src.data.data_wrangling import (
-    MessageDataWrangler,
-    QuotationResponseDataWrangler,
-    ReactionDataWrangler,
-)
+from src.data.data_wrangling import (DateTimeConverter, MessageDataWrangler,
+                                     QuotationResponseDataWrangler,
+                                     ReactionDataWrangler)
+
+
+class TestDateTimeConverter:
+    """Test class for the DateTimeConverter class."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Fixture to set up resources before each test method."""
+        self.fake = Faker()
+        self.date_time_converter = DateTimeConverter()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_convert_unix_to_datetime(self, iteration):
+        """Test to check if the convert_unix_to_datetime() function properly converts Unix timestamps."""
+        # Generate fake Unix timestamps in milliseconds
+        unix_timestamps = [self.fake.unix_time() * 1000 for _ in range(10)]
+
+        # Create a DataFrame with the Unix timestamps
+        df = pd.DataFrame({"timestamp": unix_timestamps})
+
+        # Use the convert_unix_to_datetime function
+        new_df = self.date_time_converter.convert_unix_to_datetime(df, "timestamp")
+
+        # Check if the new column is created
+        assert f"timestamp_datetime" in new_df.columns
+
+        # Check if the new column contains valid datetime objects
+        assert pd.api.types.is_datetime64_any_dtype(new_df["timestamp_datetime"])
+
+    def test_convert_unix_to_datetime_invalid_column(self):
+        """Test to check if the function raises a KeyError when given a non-existent column."""
+        df = pd.DataFrame({"other_column": [1234567890]})
+
+        with pytest.raises(KeyError):
+            self.date_time_converter.convert_unix_to_datetime(df, "timestamp")
+
+    def test_convert_unix_to_datetime_non_integer_column(self):
+        """Test to check if the function raises a TypeError when given a non-integer column."""
+        df = pd.DataFrame({"timestamp": ["1234567890"]})
+
+        with pytest.raises(Exception):
+            self.date_time_converter.convert_unix_to_datetime(df, "timestamp")
 
 
 class TestMessageDataWrangler:
@@ -71,6 +111,52 @@ class TestMessageDataWrangler:
         # Passing None as input
         with pytest.raises(TypeError):
             self.message_data_wrangler.filter_and_rename_messages_df(None)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_concatenate_comment_threads_valid(
+        self, fake_filtered_and_renamed_dataframe, iteration
+    ):
+        """
+        Test to check if the function returns the expected DataFrame when valid input is provided.
+        """
+        result = self.message_data_wrangler.concatenate_comment_threads(
+            fake_filtered_and_renamed_dataframe, group_participants_n=3
+        )
+        assert isinstance(result, pd.DataFrame)
+        assert result.shape[1] == 10
+        expected_columns = [
+            "comment_id",
+            "comment_date_sent",
+            "comment_thread_id",
+            "comment_from_recipient_id",
+            "comment_body",
+            "quote_id",
+            "response_id",
+            "response_date_sent",
+            "response_from_recipient_id",
+            "response_body",
+        ]
+        assert list(result.columns) == expected_columns
+        assert result["comment_id"].min() >= 1
+        assert result["comment_id"].max() <= 1000
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_concatenate_comment_threads_invalid(self, iteration):
+        """
+        Test to check if the function raises appropriate exceptions when invalid input is provided.
+        """
+        group_n = self.fake.random_int(min=1, max=15)
+
+        with pytest.raises(TypeError):
+            self.message_data_wrangler.concatenate_comment_threads(
+                "invalid_input", group_participants_n=group_n
+            )
+
+        invalid_df = pd.DataFrame({"invalid_column": [1, 2, 3]})
+        with pytest.raises(ValueError):
+            self.message_data_wrangler.concatenate_comment_threads(
+                invalid_df, group_participants_n=group_n
+            )
 
 
 class TestReactionDataWrangler:

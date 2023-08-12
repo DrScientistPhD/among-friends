@@ -96,12 +96,15 @@ class TimeCalculations:
             pd.DataFrame: Original DataFrame with an additional 'weight' column.
 
         Raises:
+            TypeError: If df is not a pandas DataFrame, or if decay_constant or base_value are not floats.
+            KeyError: If the time_diff column is not in the provided DataFrame.
             Exception: If there's an error during the weight calculation.
         """
+        # Validate input data
         validate_dataframe(df)
-        validate_columns_in_dataframe(df, ["time_diff"])
         validate_data_types(decay_constant, float, "decay_constant")
         validate_data_types(base_value, float, "base_value")
+        validate_columns_in_dataframe(df, ["time_diff"])
 
         try:
             df["weight"] = base_value * np.exp(-decay_constant * df["time_diff"])

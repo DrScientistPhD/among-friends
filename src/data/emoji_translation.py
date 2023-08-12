@@ -16,8 +16,10 @@ class EmojiTranslator:
                  Untranslatable emojis will be replaced by '<emoji_not_translated>'.
 
         Raises:
+            TypeError: If text is not a string.
             Exception: If there's an error during the emoji translation process.
         """
+        # Validate input data
         validate_data_types(text, str, "text")
 
         try:
