@@ -10,7 +10,7 @@ from src.data.emoji_translation import EmojiTranslator
 class DateTimeConverter:
     @staticmethod
     def convert_unix_to_datetime(
-        df: pd.DataFrame, timestamp_column: str
+            df: pd.DataFrame, timestamp_column: str
     ) -> pd.DataFrame:
         """
         Converts a column with Unix timestamps (in milliseconds) to a more readable datetime format.
@@ -75,6 +75,8 @@ class MessageDataWrangler:
             KeyError: If the specified timestamp column does not exist in the DataFrame.
             Exception: If there's an error during the filtering and renaming process.
         """
+        # TODO Implement ability to specify by comment_thread_id
+
         # Validate input data types
         validate_dataframe(df)
         validate_columns_in_dataframe(
@@ -110,7 +112,7 @@ class MessageDataWrangler:
 
     @staticmethod
     def concatenate_comment_threads(
-        df_pd: pd.DataFrame, group_participants_n: int
+            df_pd: pd.DataFrame, group_participants_n: int
     ) -> pd.DataFrame:
         """
         Concatenates comment threads from a pandas DataFrame, taking the i-th row and
