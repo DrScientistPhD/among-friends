@@ -103,6 +103,9 @@ class MessageDataWrangler:
                 "comment_body",
             ]
 
+            renamed_df["quote_id"] = renamed_df["quote_id"].fillna(0)
+            renamed_df["quote_id"] = renamed_df["quote_id"].astype(int)
+
             slim_df = renamed_df[columns_to_filter].copy()
 
             return slim_df
@@ -300,36 +303,39 @@ class QuotationResponseDataWrangler:
         # Validate input data types
         validate_dataframe(df)
         validate_columns_in_dataframe(
-            df, ["_id", "date_sent", "thread_id", "from_recipient_id", "body"]
+            df, ["comment_id", "comment_thread_id", "comment_from_recipient_id", "quote_id", "comment_date_sent", "comment_body"]
         )
 
         try:
             quotation_df = df.rename(
                 columns={
-                    "_id": "quotation_id",
-                    "date_sent": "quotation_date_sent",
-                    "thread_id": "quotation_thread_id",
-                    "from_recipient_id": "quotation_from_recipient_id",
-                    "body": "quotation_body",
+                    "comment_id": "quotation_id",
+                    "comment_date_sent": "quotation_date_sent",
+                    "comment_thread_id": "quotation_thread_id",
+                    "comment_from_recipient_id": "quotation_from_recipient_id",
+                    "comment_body": "quotation_body",
                 }
             )
 
             response_df = df.copy().rename(
                 columns={
-                    "_id": "response_id",
-                    "date_sent": "response_date_sent",
+                    "comment_id": "response_id",
+                    "comment_date_sent": "response_date_sent",
                     "thread_id": "response_thread_id",
-                    "from_recipient_id": "response_from_recipient_id",
-                    "body": "response_body",
+                    "comment_thread_id": "response_from_recipient_id",
+                    "comment_body": "response_body",
                 }
             )
 
-            # Oddly enough, quote_id is based off of a timestamp. Hence the datetime conversion below.
-            response_df["quote_id"] = pd.to_datetime(response_df["quote_id"], unit="ns")
-
+            # Oddly enough, the quote_id is a timestamp that ties a response back to the original message (the quotation)
+            # After the merge, drop one of the duplicate quote_id columns and rename the other back to its original name.
             quotation_response_df = quotation_df.merge(
                 response_df, left_on="quotation_date_sent", right_on="quote_id"
             )
+
+            # Drop the quote_id_y column and rename quote_id_x to quote_id
+            quotation_response_df.drop(columns=["quote_id_y"], inplace=True)
+            quotation_response_df.rename(columns={"quote_id_x": "quote_id"}, inplace=True)
 
             quotation_response_df.reset_index(drop=True, inplace=True)
 
