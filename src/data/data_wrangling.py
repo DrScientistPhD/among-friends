@@ -241,6 +241,44 @@ class ReactionDataWrangler:
                 f"Failed to filter and rename reactions DataFrame: {str(e)}"
             )
 
+    @staticmethod
+    def merge_message_with_reaction(message_df: pd.DataFrame, reaction_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Merges two DataFrames, one containing message details and the other containing reaction details,
+        based on the 'comment_id' in the message DataFrame and the 'message_id' in the reaction DataFrame.
+
+        Args:
+            message_df (pd.DataFrame): DataFrame containing message details, with a 'comment_id' column.
+            reaction_df (pd.DataFrame): DataFrame containing reaction details, with a 'message_id' column.
+
+        Returns:
+            pd.DataFrame: Merged DataFrame containing both message and reaction details.
+
+        Raises:
+            TypeError: If either of the input DataFrames is not a pandas DataFrame.
+            KeyError: If the required columns ('comment_id' or 'message_id') are not present in the input DataFrames.
+            Exception: If there's an error during the merging process.
+        """
+        # Validate input data
+        validate_dataframe(message_df)
+        validate_dataframe(reaction_df)
+        validate_columns_in_dataframe(message_df, ['comment_id'])
+        validate_columns_in_dataframe(reaction_df, ['message_id'])
+
+        try:
+            # Merge message and reaction dataframes on the specified columns
+            df_message_reaction = pd.merge(
+                message_df,
+                reaction_df,
+                left_on="comment_id",
+                right_on="message_id",
+                suffixes=("", "_reaction"),
+            )
+            return df_message_reaction
+
+        except Exception as e:
+            raise Exception(f"Failed to merge message and reaction dataframes: {str(e)}")
+
 
 class QuotationResponseDataWrangler:
     @staticmethod
@@ -286,6 +324,7 @@ class QuotationResponseDataWrangler:
                 }
             )
 
+            # Oddly enough, quote_id is based off of a timestamp. Hence the datetime conversion below.
             response_df["quote_id"] = pd.to_datetime(response_df["quote_id"], unit="ns")
 
             quotation_response_df = quotation_df.merge(
