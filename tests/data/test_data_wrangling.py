@@ -63,15 +63,15 @@ class TestMessageDataWrangler:
         self.message_data_wrangler = MessageDataWrangler()
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_filter_and_rename_messages_df(self, iteration, fake_messages_df):
+    def test_filter_and_rename_messages_df(self, iteration, fake_message_df):
         """
         Test to check if filter_and_rename_messages_df() filters and renames columns correctly.
         """
         # Make a copy of the DataFrame before renaming columns
-        df_copy = fake_messages_df.copy()
+        df_copy = fake_message_df.copy()
 
         # Rename columns in the fake DataFrame
-        fake_messages_df.rename(
+        fake_message_df.rename(
             columns={
                 "_id": "comment_id",
                 "thread_id": "comment_thread_id",
@@ -114,13 +114,13 @@ class TestMessageDataWrangler:
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_concatenate_comment_threads_valid(
-        self, fake_filtered_and_renamed_dataframe, iteration
+        self, fake_message_slim_df, iteration
     ):
         """
         Test to check if the function returns the expected DataFrame when valid input is provided.
         """
         result = self.message_data_wrangler.concatenate_comment_threads(
-            fake_filtered_and_renamed_dataframe, group_participants_n=3
+            fake_message_slim_df, group_participants_n=3
         )
         assert isinstance(result, pd.DataFrame)
         assert result.shape[1] == 10
@@ -173,15 +173,15 @@ class TestReactionDataWrangler:
         self.reaction_data_wrangler = ReactionDataWrangler()
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_filter_and_rename_reactions_df(self, iteration, fake_dataframe_reactions):
+    def test_filter_and_rename_reactions_df(self, iteration, fake_reaction_df):
         """
         Test to check if filter_and_rename_reactions_df() filters and renames columns correctly.
         """
         # Make a copy of the DataFrame before renaming columns
-        df_copy = fake_dataframe_reactions.copy()
+        df_copy = fake_reaction_df.copy()
 
         # Rename columns in the fake DataFrame
-        fake_dataframe_reactions.rename(
+        fake_reaction_df.rename(
             columns={
                 "_id": "reaction_id",
                 "author_id": "reaction_author_id",
@@ -222,15 +222,15 @@ class TestReactionDataWrangler:
             self.reaction_data_wrangler.filter_and_rename_reactions_df(None)
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_merge_message_with_reaction_valid(self, fake_filtered_and_renamed_dataframe, fake_dataframe_reactions_slim, iteration):
+    def test_merge_message_with_reaction_valid(self, fake_message_slim_df, fake_reaction_slim_df, iteration):
         """
         Test to check if the function correctly merges two dataframes with valid input.
         """
-        result = self.reaction_data_wrangler.merge_message_with_reaction(fake_filtered_and_renamed_dataframe, fake_dataframe_reactions_slim)
+        result = self.reaction_data_wrangler.merge_message_with_reaction(fake_message_slim_df, fake_reaction_slim_df)
         assert isinstance(result, pd.DataFrame)
         assert "comment_id" in result.columns
         assert "message_id" in result.columns
-        assert len(result.columns) == len(fake_filtered_and_renamed_dataframe.columns) + len(fake_dataframe_reactions_slim.columns)
+        assert len(result.columns) == len(fake_message_slim_df.columns) + len(fake_reaction_slim_df.columns)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_merge_message_with_reaction_invalid(self, iteration):
@@ -267,103 +267,49 @@ class TestQuotationResponseDataWrangler:
         self.fake = Faker()
         self.quotation_response_data_wrangler = QuotationResponseDataWrangler()
 
-    @pytest.fixture
-    def fake_dataframe_messages(self):
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_create_quotation_response_df_with_quotation(self, iteration, fake_message_slim_df):
         """
-        Fixture to generate fake DataFrame data for testing messages DataFrame.
-        Returns:
-            pd.DataFrame: Fake DataFrame with random data.
+        Test to check if create_quotation_response_df() correctly handles the case where a message has quotations.
         """
-        ids = [self.fake.random_int(min=1, max=1000) for _ in range(100)]
-        return pd.DataFrame(
-            {
-                "_id": ids,
-                "date_sent": pd.date_range(start="1/1/2018", periods=100),
-                "thread_id": [
-                    self.fake.random_int(min=1, max=1000) for _ in range(100)
-                ],
-                "from_recipient_id": [
-                    self.fake.random_int(min=1, max=1000) for _ in range(100)
-                ],
-                "body": [self.fake.sentence(nb_words=6) for _ in range(100)],
-                "quote_id": ids,  # Using ids as quote_id to mimic reference to another message
-            }
+        # Assuming that fake_message_slim_df fixture contains both messages with and without quotations
+
+        # Call the create_quotation_response_df method with the fake DataFrame
+        quotation_response_df = (
+            self.quotation_response_data_wrangler.create_quotation_response_df(
+                fake_message_slim_df
+            )
         )
 
-    @pytest.fixture
-    def fake_quotation_response_df(self):
-        """
-        Fixture to generate fake DataFrame data for testing quotation-response DataFrame.
-        Returns:
-            pd.DataFrame: Fake DataFrame with random data.
-        """
-        n = 100
-
-        # Generate 'quotation_date_sent' and 'response_date_sent' first
-        quotation_date_sent = [
-            self.fake.random_int(min=1673137959372, max=1673378972279) for _ in range(n)
+        # Verify the structure of the output DataFrame
+        expected_columns = [
+            "quotation_id", "quotation_date_sent", "quotation_thread_id",
+            "quotation_from_recipient_id", "quotation_body", "quote_id",
+            "response_id", "response_date_sent", "response_from_recipient_id",
+            "comment_from_recipient_id", "response_body"
         ]
-        response_date_sent = [
-            self.fake.random_int(min=1673137959372, max=1673378972279) for _ in range(n)
-        ]
-
-        # Calculate the time difference in seconds and store in 'time_diff'
-        time_diff = [
-            (start - end) / 1000
-            for start, end in zip(quotation_date_sent, response_date_sent)
-        ]
-
-        data = {
-            "quotation_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=True
-            ),
-            "quotation_date_sent": quotation_date_sent,
-            "quotation_thread_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=False
-            ),
-            "quotation_from_recipient_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=False
-            ),
-            "quotation_body": self.fake.sentences(nb=n, ext_word_list=None),
-            "response_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=True
-            ),
-            "response_date_sent": response_date_sent,
-            "response_thread_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=False
-            ),
-            "response_from_recipient_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=False
-            ),
-            "response_body": self.fake.sentences(nb=n, ext_word_list=None),
-            "quote_id": self.fake.random_elements(
-                elements=range(1000), length=n, unique=False
-            ),
-            "time_diff": time_diff,
-        }
-
-        return pd.DataFrame(data)
+        assert list(quotation_response_df.columns) == expected_columns
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_create_quotation_response_df_no_quotation(
-        self, iteration, fake_dataframe_messages
+        self, iteration, fake_message_slim_df
     ):
         """
         Test to check if create_quotation_response_df() correctly handles the case where a message has no quotation.
         """
         # Modify the fake DataFrame so that the first entry has no quotation
-        fake_dataframe_messages.loc[0, "quote_id"] = None
+        fake_message_slim_df.loc[0, "quote_id"] = None
 
         quotation_response_df = (
             self.quotation_response_data_wrangler.create_quotation_response_df(
-                fake_dataframe_messages
+                fake_message_slim_df
             )
         )
 
         # If there are no quotations, the DataFrame should be empty
         assert quotation_response_df.empty
 
-    @pytest.mark.parametrize("iteration", range(1))
+    @pytest.mark.parametrize("iteration", range(10))
     def test_create_quotation_response_df_invalid_input(self, iteration):
         """
         Test to check if create_quotation_response_df() raises an error when given invalid input.
