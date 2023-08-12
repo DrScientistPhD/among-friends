@@ -17,9 +17,10 @@ class RecipientMapper:
 
         Raises:
             TypeError: If df_recipient is not a pandas DataFrame.
-            ValueError: If df_recipient is missing required columns '_id' and/or 'profile_joined_name'.
+            KeyError: If df_recipient is missing required columns '_id' and/or 'profile_joined_name'.
             Exception: If there's an error during dictionary creation.
         """
+        # Validate input data
         validate_dataframe(df_recipient)
         validate_columns_in_dataframe(df_recipient, ["_id", "profile_joined_name"])
 

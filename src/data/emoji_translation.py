@@ -16,18 +16,21 @@ class EmojiTranslator:
                  Untranslatable emojis will be replaced by '<emoji_not_translated>'.
 
         Raises:
+            TypeError: If text is not a string.
             Exception: If there's an error during the emoji translation process.
         """
+        # Validate input data
         validate_data_types(text, str, "text")
 
         try:
             translated_text = []
-            for emo in emoji.demojize(text).split():
-                try:
-                    translated_emo = emoji.emojize(emo)
+            for char in text:
+                translated_emo = emoji.demojize(char)
+                # If the translation is successful, append the translated emoji; otherwise, append the original
+                # character
+                if translated_emo != char:
                     translated_text.append(translated_emo)
-                except AttributeError:
-                    # If an emoji doesn't have a textual representation, replace it with a placeholder.
+                else:
                     translated_text.append("<emoji_not_translated>")
 
             return " ".join(translated_text)

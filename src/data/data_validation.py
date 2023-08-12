@@ -24,7 +24,7 @@ def validate_columns_in_dataframe(df, columns):
         columns (list or set): The names of the columns to check.
 
     Raises:
-        ValueError: If any of the columns are not found in the DataFrame.
+        KeyError: If any of the columns are not found in the DataFrame.
     """
     missing_columns = set(columns) - set(df.columns)
 

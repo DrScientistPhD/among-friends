@@ -1,8 +1,57 @@
-import warnings
-
 import emoji
 import numpy as np
 import pandas as pd
+
+from src.data.csv_importer import CSVImporter
+from src.data.data_wrangling import (DateTimeConverter, MessageDataWrangler,
+                                     QuotationResponseDataWrangler,
+                                     ReactionDataWrangler)
+from src.data.emoji_translation import EmojiTranslator
+from src.data.recipient_mapper import RecipientMapper
+from src.data.time_calculations import TimeCalculations
+
+
+# Import message.csv and reaction.csv
+message_df = CSVImporter.import_csv("message")
+reaction_df = CSVImporter.import_csv("reaction")
+
+# Filter and rename columns in message_df
+message_slim_df = MessageDataWrangler.filter_and_rename_messages_df(message_df)
+
+# Concatenate comment threads to pair comments and responses, and sets the number of rows to look forward for each
+# individual comment to the total number of unique comment_from_recipient_ids.
+group_n = message_slim_df["comment_from_recipient_id"].nunique()
+comments_responses_df = MessageDataWrangler.concatenate_comment_threads(message_slim_df, group_n)
+
+# Quantify the time difference between comments and responses
+# TODO: Figure out why some values are negative.
+response_time_df = TimeCalculations.calculate_time_diff(comments_responses_df, "response_date_sent", "comment_date_sent")
+
+# Calculate the decay constant based on the 75 percentile of the time_diff column
+response_decay_constant = TimeCalculations.calculate_decay_constant(response_time_df, "time_diff")
+
+# Using a base value of 1, derive the weight of each comment-response interaction
+response_weight_df = TimeCalculations.calculate_weight(response_time_df, response_decay_constant, 1.0)
+
+# Create more readable datetime columns
+response_weight_df = DateTimeConverter.convert_unix_to_datetime(response_weight_df, "comment_date_sent")
+response_weight_df = DateTimeConverter.convert_unix_to_datetime(response_weight_df, "response_date_sent")
+
+
+# Filter and rename columns in reaction_df
+reaction_slim_df = ReactionDataWrangler.filter_and_rename_reactions_df(reaction_df)
+
+
+# TODO: Turn the merge into a function for data_wrangling
+# Merge df_message and df_reaction on 'message_id' to associate reactions with messages
+df_message_reaction = pd.merge(
+    message_slim_df,
+    reaction_slim_df,
+    left_on="comment_id",
+    right_on="message_id",
+    suffixes=("", "_reaction"),
+)
+
 
 # First, let's read in the necessary CSV files as Pandas DataFrames
 df_message = pd.read_csv("/Users/raymondpasek/Repos/among-friends/data/raw/message.csv")

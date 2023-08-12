@@ -1,16 +1,19 @@
+import warnings
+
 import numpy as np
 import pandas as pd
-import warnings
+
 from src.data.data_validation import (validate_columns_in_dataframe,
-                             validate_data_types, validate_dataframe)
+                                      validate_data_types, validate_dataframe)
 
 
 class TimeCalculations:
     @staticmethod
     def calculate_time_diff(df: pd.DataFrame, timestamp1: str, timestamp2: str) -> pd.DataFrame:
         """
-        Calculates the time difference between two timestamps and stores the result in a new column 'time_diff'.
-        The time difference is given in seconds. A warning is raised if any time difference is negative.
+        Calculates the time difference between two timestamps (Unix time in milliseconds) and stores the result in a
+        new column 'time_diff'. The time difference is given in seconds. A warning is raised if any time difference is
+        negative.
 
         Args:
             df (pd.DataFrame): The DataFrame containing the time columns.
@@ -23,6 +26,8 @@ class TimeCalculations:
         Raises:
             Exception: If there's an error during the time difference calculation.
         """
+        # TODO: Need to figure out why some time_diff values are negative
+
         validate_dataframe(df)
         validate_data_types(timestamp1, str, "timestamp1")
         validate_data_types(timestamp2, str, "timestamp2")
@@ -96,12 +101,15 @@ class TimeCalculations:
             pd.DataFrame: Original DataFrame with an additional 'weight' column.
 
         Raises:
+            TypeError: If df is not a pandas DataFrame, or if decay_constant or base_value are not floats.
+            KeyError: If the time_diff column is not in the provided DataFrame.
             Exception: If there's an error during the weight calculation.
         """
+        # Validate input data
         validate_dataframe(df)
-        validate_columns_in_dataframe(df, ["time_diff"])
         validate_data_types(decay_constant, float, "decay_constant")
         validate_data_types(base_value, float, "base_value")
+        validate_columns_in_dataframe(df, ["time_diff"])
 
         try:
             df["weight"] = base_value * np.exp(-decay_constant * df["time_diff"])
