@@ -24,12 +24,13 @@ class EmojiTranslator:
 
         try:
             translated_text = []
-            for emo in emoji.demojize(text).split():
-                try:
-                    translated_emo = emoji.emojize(emo)
+            for char in text:
+                translated_emo = emoji.demojize(char)
+                # If the translation is successful, append the translated emoji; otherwise, append the original
+                # character
+                if translated_emo != char:
                     translated_text.append(translated_emo)
-                except AttributeError:
-                    # If an emoji doesn't have a textual representation, replace it with a placeholder.
+                else:
                     translated_text.append("<emoji_not_translated>")
 
             return " ".join(translated_text)
