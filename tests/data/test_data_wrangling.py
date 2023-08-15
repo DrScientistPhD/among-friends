@@ -61,6 +61,7 @@ class TestMessageDataWrangler:
         """
         self.fake = Faker()
         self.message_data_wrangler = MessageDataWrangler()
+        self.thread_id_n = self.fake.random_int(min=1, max=3)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_filter_and_rename_messages_df(self, iteration, fake_message_df):
@@ -93,7 +94,7 @@ class TestMessageDataWrangler:
         ]
 
         filtered_and_renamed_df = (
-            self.message_data_wrangler.filter_and_rename_messages_df(df_copy)
+            self.message_data_wrangler.filter_and_rename_messages_df(df_copy, self.thread_id_n)
         )
 
         assert isinstance(filtered_and_renamed_df, pd.DataFrame)
@@ -106,11 +107,11 @@ class TestMessageDataWrangler:
         """
         # Passing a non-DataFrame input
         with pytest.raises(TypeError):
-            self.message_data_wrangler.filter_and_rename_messages_df("invalid_data")
+            self.message_data_wrangler.filter_and_rename_messages_df("invalid_data", self.thread_id_n)
 
         # Passing None as input
         with pytest.raises(TypeError):
-            self.message_data_wrangler.filter_and_rename_messages_df(None)
+            self.message_data_wrangler.filter_and_rename_messages_df(None, self.thread_id_n)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_concatenate_comment_threads_valid(
@@ -153,7 +154,7 @@ class TestMessageDataWrangler:
             )
 
         invalid_df = pd.DataFrame({"invalid_column": [1, 2, 3]})
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             self.message_data_wrangler.concatenate_comment_threads(
                 invalid_df, group_participants_n=group_n
             )

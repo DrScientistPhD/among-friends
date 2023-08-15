@@ -60,28 +60,33 @@ class DateTimeConverter:
 
 class MessageDataWrangler:
     @staticmethod
-    def filter_and_rename_messages_df(df: pd.DataFrame) -> pd.DataFrame:
+    def filter_and_rename_messages_df(df: pd.DataFrame, thread_id: int) -> pd.DataFrame:
         """
         Filters and renames columns of a given DataFrame representing messages.
 
         Args:
             df (pd.DataFrame): The original DataFrame to be filtered and renamed.
+            thread_id (int): The thread_id to filter by.
 
         Returns:
             pd.DataFrame: A new DataFrame with the filtered and renamed columns.
 
         Raises:
-            TypeError: If df is not a pandas DataFrame.
+            TypeError: If df is not a pandas DataFrame, or thread_id is not an int.
             KeyError: If the specified timestamp column does not exist in the DataFrame.
+            ValueError: If there are no records that meet the specified thread_id filter.
             Exception: If there's an error during the filtering and renaming process.
         """
-        # TODO Implement ability to specify by comment_thread_id
-
         # Validate input data types
         validate_dataframe(df)
+        validate_data_types(thread_id, int, "thread_id")
         validate_columns_in_dataframe(
             df, ["_id", "thread_id", "from_recipient_id", "date_sent", "body"]
         )
+
+        # Check if there are any records that meet the specified thread_id filter
+        if df[df['thread_id'] == thread_id].empty:
+            raise ValueError(f"No records found for thread_id: {thread_id}")
 
         try:
             renamed_df = df.rename(
@@ -133,12 +138,15 @@ class MessageDataWrangler:
             pd.DataFrame: Final processed pandas DataFrame, with original comments and selected responses.
 
         Raises:
-            TypeError: If df is not a pandas DataFrame, or group_participants_n is not an int.
-            ValueError: If an unexpected error occurs during conversion.
-            Exception: If there's an error while concatenating comment threads.
+            TypeError: If input df is not a pandas DataFrame, or group_participants_n is not an int.
+            KeyError: If the specified columns do not exist in the DataFrame.
+            ValueError: If there's an error while concatenating comment threads.
         """
         # Validate input data types
         validate_dataframe(df_pd)
+        validate_columns_in_dataframe(
+            df_pd, ["comment_id", "comment_date_sent", "comment_from_recipient_id", "comment_body"]
+        )
         validate_data_types(group_participants_n, int, "group_participants_n")
 
         try:
@@ -152,6 +160,9 @@ class MessageDataWrangler:
                 "comment_from_recipient_id": "response_from_recipient_id",
                 "comment_body": "response_body",
             }
+
+            # Sort dataframe by comment_date_set to ensure proper comment-response linkage
+            df_polars = df_polars.sort(by="comment_date_sent")
 
             dfs = []
 

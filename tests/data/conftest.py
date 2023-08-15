@@ -26,7 +26,7 @@ def fake_message_df():
         {
             "_id": ids,
             "date_sent": date_sent,
-            "thread_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "thread_id": [fake.random_int(min=1, max=3) for _ in range(n)],
             "from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
             "body": [fake.sentence(nb_words=6) for _ in range(n)],
             "quote_id": ids,  # Using ids as quote_id to mimic reference to another message
@@ -85,7 +85,7 @@ def fake_message_slim_df():
         {
             "comment_id": ids,
             "comment_date_sent": comment_date_sent,
-            "comment_thread_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "comment_thread_id": [fake.random_int(min=1, max=3) for _ in range(n)],
             "comment_from_recipient_id": [
                 fake.random_int(min=1, max=1000) for _ in range(n)
             ],

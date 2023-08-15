@@ -15,18 +15,17 @@ from src.data.time_calculations import TimeCalculations
 message_df = CSVImporter.import_csv("message")
 reaction_df = CSVImporter.import_csv("reaction")
 
-# message_df.dtypes
-
 # Filter and rename columns in message_df
-message_slim_df = MessageDataWrangler.filter_and_rename_messages_df(message_df)
+message_slim_df = MessageDataWrangler.filter_and_rename_messages_df(message_df, thread_id=2)
 
 # Concatenate comment threads to pair comments and responses, and sets the number of rows to look forward for each
 # individual comment to the total number of unique comment_from_recipient_ids.
 group_n = message_slim_df["comment_from_recipient_id"].nunique()
 comments_responses_df = MessageDataWrangler.concatenate_comment_threads(message_slim_df, group_n)
 
+
+
 # Quantify the time difference between comments and responses
-# TODO: Figure out why some values are negative.
 response_time_df = TimeCalculations.calculate_time_diff(comments_responses_df, "response_date_sent", "comment_date_sent")
 
 # Calculate the decay constant based on the 75 percentile of the time_diff column
@@ -54,7 +53,7 @@ reactions_time_df = TimeCalculations.calculate_time_diff(comments_reactions_df, 
 reaction_decay_constant = TimeCalculations.calculate_decay_constant(reactions_time_df, "time_diff")
 
 # Using a base value of 1.5, derive the weight of each comment-response interaction
-reaction_weight_df = TimeCalculations.calculate_weight(reactions_time_df, response_decay_constant, 1.5)
+reaction_weight_df = TimeCalculations.calculate_weight(reactions_time_df, reaction_decay_constant, 1.5)
 
 # Create more readable datetime columns
 reaction_weight_df = DateTimeConverter.convert_unix_to_datetime(reaction_weight_df, "comment_date_sent")
