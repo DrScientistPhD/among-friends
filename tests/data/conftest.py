@@ -35,9 +35,9 @@ def fake_message_df():
 
 
 @pytest.fixture
-def fake_reaction_df():
+def fake_emoji_df():
     """
-    Fixture to generate fake DataFrame data for testing reactions DataFrame.
+    Fixture to generate fake DataFrame data for testing emojis DataFrame.
 
     Returns:
         pd.DataFrame: Fake DataFrame with random data.
@@ -96,9 +96,9 @@ def fake_message_slim_df():
 
 
 @pytest.fixture
-def fake_reaction_slim_df():
+def fake_emoji_slim_df():
     """
-    Fixture to generate fake DataFrame data for testing a slim reactions DataFrame.
+    Fixture to generate fake DataFrame data for testing a slim emojis DataFrame.
 
     Returns:
         pd.DataFrame: Fake DataFrame with random data.
@@ -113,15 +113,15 @@ def fake_reaction_slim_df():
     # TODO: This can be improved by better and more consistent randomized data
     return pd.DataFrame(
         {
-            "reaction_id": [fake.random_int() for _ in range(n)],
+            "emoji_id": [fake.random_int() for _ in range(n)],
             "message_id": [fake.random_int() for _ in range(n)],
-            "reaction_author_id": [fake.random_int() for _ in range(n)],
+            "emoji_author_id": [fake.random_int() for _ in range(n)],
             "emoji": [
                 fake.random_element(elements=("😍", "🐍", "❤️", "👍", "🙌"))
                 for _ in range(n)
             ],
-            "reaction_date_sent": date_sent,
-            "reaction_translation": [
+            "emoji_date_sent": date_sent,
+            "emoji_translation": [
                 fake.random_element(elements=("heart_face", "snake", "heart", "thumbs_up", "raise"))
                 for _ in range(n)
             ]
@@ -183,3 +183,43 @@ def fake_quotation_response_df():
     return pd.DataFrame(data)
 
 
+@pytest.fixture
+def fake_response_weight_df():
+    """
+    Fixture to generate fake DataFrame data that represents the structure of any response weight DataFrame. Note, this
+    includes all possible columns from any dataframe the function takes.
+
+    Returns:
+        pd.DataFrame: Fake DataFrame with the expected columns.
+    """
+
+    n = 100
+
+    ids = [fake.random_int(min=1, max=1000) for _ in range(n)]
+    date_sent = [fake.random_int(min=1673137959372, max=1673378972279) for _ in range(n)]
+    body = [fake.sentence(nb_words=6) for _ in range(n)]
+    time_diff = [fake.random_int(min=0, max=10000) for _ in range(n)]
+    weight = [fake.random_number(digits=2) for _ in range(n)]
+
+    return pd.DataFrame(
+        {
+            "comment_id": ids,
+            "comment_thread_id": [fake.random_int(min=1, max=3) for _ in range(n)],
+            "comment_from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "quote_id": ids,
+            "comment_date_sent": date_sent,
+            "comment_body": body,
+            "response_id": ids,
+            "response_date_sent": date_sent,
+            "response_from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "response_body": body,
+            "time_diff": time_diff,
+            "weight": weight,
+            "comment_date_sent_datetime": [fake.date_time() for _ in range(n)],
+            "response_date_sent_datetime": [fake.date_time() for _ in range(n)],
+            "reaction_author_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "reaction_date_sent_datetime": [fake.date_time() for _ in range(n)],
+            "quotation_from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "quotation_date_sent_datetime": [fake.date_time() for _ in range(n)]
+        }
+    )
