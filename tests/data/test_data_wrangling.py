@@ -4,7 +4,7 @@ from faker import Faker
 
 from src.data.data_wrangling import (DateTimeConverter, MessageDataWrangler,
                                      QuotationResponseDataWrangler,
-                                     ReactionDataWrangler)
+                                     EmojiDataWrangler)
 
 
 class TestDateTimeConverter:
@@ -160,7 +160,7 @@ class TestMessageDataWrangler:
             )
 
 
-class TestReactionDataWrangler:
+class TestEmojiDataWrangler:
     """
     Test class for the DataFrameWrangler class.
     """
@@ -171,88 +171,88 @@ class TestReactionDataWrangler:
         Fixture to set up resources before each test method.
         """
         self.fake = Faker()
-        self.reaction_data_wrangler = ReactionDataWrangler()
+        self.reaction_data_wrangler = EmojiDataWrangler()
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_filter_and_rename_reactions_df(self, iteration, fake_reaction_df):
+    def test_filter_and_rename_emojis_df(self, iteration, fake_emoji_df):
         """
-        Test to check if filter_and_rename_reactions_df() filters and renames columns correctly.
+        Test to check if filter_and_rename_emojis_df() filters and renames columns correctly.
         """
         # Make a copy of the DataFrame before renaming columns
-        df_copy = fake_reaction_df.copy()
+        df_copy = fake_emoji_df.copy()
 
         # Rename columns in the fake DataFrame
-        fake_reaction_df.rename(
+        fake_emoji_df.rename(
             columns={
-                "_id": "reaction_id",
-                "author_id": "reaction_author_id",
-                "date_sent": "reaction_date_sent",
+                "_id": "emoji_id",
+                "author_id": "emoji_author_id",
+                "date_sent": "emoji_date_sent",
             },
             inplace=True,
         )
 
         # Set the expected column names after renaming
         expected_columns = [
-            "reaction_id",
+            "emoji_id",
             "message_id",
-            "reaction_author_id",
+            "emoji_author_id",
             "emoji",
-            "reaction_date_sent",
-            "reaction_translation",
+            "emoji_date_sent",
+            "emoji_translation",
         ]
 
         # Pass the copy of the DataFrame to the function
         filtered_and_renamed_df = (
-            self.reaction_data_wrangler.filter_and_rename_reactions_df(df_copy)
+            self.reaction_data_wrangler.filter_and_rename_emojis_df(df_copy)
         )
 
         assert isinstance(filtered_and_renamed_df, pd.DataFrame)
         assert list(filtered_and_renamed_df.columns) == expected_columns
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_filter_and_rename_reactions_df_invalid_input(self, iteration):
+    def test_filter_and_rename_emojis_df_invalid_input(self, iteration):
         """
         Test to check if the function raises a ValueError when invalid input is provided.
         """
         # Passing a non-DataFrame input
         with pytest.raises(TypeError):
-            self.reaction_data_wrangler.filter_and_rename_reactions_df("invalid_data")
+            self.reaction_data_wrangler.filter_and_rename_emojis_df("invalid_data")
 
         # Passing None as input
         with pytest.raises(TypeError):
-            self.reaction_data_wrangler.filter_and_rename_reactions_df(None)
+            self.reaction_data_wrangler.filter_and_rename_emojis_df(None)
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_merge_message_with_reaction_valid(self, fake_message_slim_df, fake_reaction_slim_df, iteration):
+    def test_merge_message_with_emoji_valid(self, fake_message_slim_df, fake_emoji_slim_df, iteration):
         """
         Test to check if the function correctly merges two dataframes with valid input.
         """
-        result = self.reaction_data_wrangler.merge_message_with_reaction(fake_message_slim_df, fake_reaction_slim_df)
+        result = self.reaction_data_wrangler.merge_message_with_emoji(fake_message_slim_df, fake_emoji_slim_df)
         assert isinstance(result, pd.DataFrame)
         assert "comment_id" in result.columns
         assert "message_id" in result.columns
-        assert len(result.columns) == len(fake_message_slim_df.columns) + len(fake_reaction_slim_df.columns)
+        assert len(result.columns) == len(fake_message_slim_df.columns) + len(fake_emoji_slim_df.columns)
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_merge_message_with_reaction_invalid(self, iteration):
+    def test_merge_message_with_emoji_invalid(self, iteration):
         """
         Test to check if the function raises appropriate exceptions with invalid input.
         """
         # Passing a non-DataFrame input for message dataframe
         with pytest.raises(TypeError):
-            self.reaction_data_wrangler.merge_message_with_reaction("invalid_input", pd.DataFrame())
+            self.reaction_data_wrangler.merge_message_with_emoji("invalid_input", pd.DataFrame())
 
         # Passing a non-DataFrame input for reaction dataframe
         with pytest.raises(TypeError):
-            self.reaction_data_wrangler.merge_message_with_reaction(pd.DataFrame(), "invalid_input")
+            self.reaction_data_wrangler.merge_message_with_emoji(pd.DataFrame(), "invalid_input")
 
         # Passing DataFrames without required columns
         invalid_message_df = pd.DataFrame({"invalid_column": [1, 2, 3]})
         invalid_reaction_df = pd.DataFrame({"another_invalid_column": [1, 2, 3]})
         with pytest.raises(KeyError):
-            self.reaction_data_wrangler.merge_message_with_reaction(invalid_message_df, pd.DataFrame())
+            self.reaction_data_wrangler.merge_message_with_emoji(invalid_message_df, pd.DataFrame())
         with pytest.raises(KeyError):
-            self.reaction_data_wrangler.merge_message_with_reaction(pd.DataFrame(), invalid_reaction_df)
+            self.reaction_data_wrangler.merge_message_with_emoji(pd.DataFrame(), invalid_reaction_df)
 
 
 class TestQuotationResponseDataWrangler:

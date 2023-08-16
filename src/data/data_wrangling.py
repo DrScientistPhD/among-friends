@@ -204,11 +204,11 @@ class MessageDataWrangler:
             )
 
 
-class ReactionDataWrangler:
+class EmojiDataWrangler:
     @staticmethod
-    def filter_and_rename_reactions_df(df: pd.DataFrame) -> pd.DataFrame:
+    def filter_and_rename_emojis_df(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Filters and renames columns of a given DataFrame representing reactions.
+        Filters and renames columns of a given DataFrame representing emojis.
 
         Args:
             df (pd.DataFrame): The original DataFrame to be filtered and renamed.
@@ -228,23 +228,23 @@ class ReactionDataWrangler:
         try:
             renamed_df = df.rename(
                 columns={
-                    "_id": "reaction_id",
-                    "author_id": "reaction_author_id",
-                    "date_sent": "reaction_date_sent",
+                    "_id": "emoji_id",
+                    "author_id": "emoji_author_id",
+                    "date_sent": "emoji_date_sent",
                 }
             )
 
             columns_to_filter = [
-                "reaction_id",
+                "emoji_id",
                 "message_id",
-                "reaction_author_id",
+                "emoji_author_id",
                 "emoji",
-                "reaction_date_sent",
+                "emoji_date_sent",
             ]
 
             slim_df = renamed_df[columns_to_filter].copy()
 
-            slim_df["reaction_translation"] = slim_df["emoji"].apply(
+            slim_df["emoji_translation"] = slim_df["emoji"].apply(
                 EmojiTranslator.translate_emoji
             )
 
@@ -252,21 +252,21 @@ class ReactionDataWrangler:
 
         except Exception as e:
             raise Exception(
-                f"Failed to filter and rename reactions DataFrame: {str(e)}"
+                f"Failed to filter and rename emojis DataFrame: {str(e)}"
             )
 
     @staticmethod
-    def merge_message_with_reaction(message_df: pd.DataFrame, reaction_df: pd.DataFrame) -> pd.DataFrame:
+    def merge_message_with_emoji(message_df: pd.DataFrame, emoji_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Merges two DataFrames, one containing message details and the other containing reaction details,
-        based on the 'comment_id' in the message DataFrame and the 'message_id' in the reaction DataFrame.
+        Merges two DataFrames, one containing message details and the other containing emoji details,
+        based on the 'comment_id' in the message DataFrame and the 'message_id' in the emoji DataFrame.
 
         Args:
             message_df (pd.DataFrame): DataFrame containing message details, with a 'comment_id' column.
-            reaction_df (pd.DataFrame): DataFrame containing reaction details, with a 'message_id' column.
+            emoji_df (pd.DataFrame): DataFrame containing emoji details, with a 'message_id' column.
 
         Returns:
-            pd.DataFrame: Merged DataFrame containing both message and reaction details.
+            pd.DataFrame: Merged DataFrame containing both message and emoji details.
 
         Raises:
             TypeError: If either of the input DataFrames is not a pandas DataFrame.
@@ -275,23 +275,23 @@ class ReactionDataWrangler:
         """
         # Validate input data
         validate_dataframe(message_df)
-        validate_dataframe(reaction_df)
+        validate_dataframe(emoji_df)
         validate_columns_in_dataframe(message_df, ['comment_id'])
-        validate_columns_in_dataframe(reaction_df, ['message_id'])
+        validate_columns_in_dataframe(emoji_df, ['message_id'])
 
         try:
-            # Merge message and reaction dataframes on the specified columns
-            df_message_reaction = pd.merge(
+            # Merge message and emoji dataframes on the specified columns
+            df_message_emoji = pd.merge(
                 message_df,
-                reaction_df,
+                emoji_df,
                 left_on="comment_id",
                 right_on="message_id",
-                suffixes=("", "_reaction"),
+                suffixes=("", "_emoji"),
             )
-            return df_message_reaction
+            return df_message_emoji
 
         except Exception as e:
-            raise Exception(f"Failed to merge message and reaction dataframes: {str(e)}")
+            raise Exception(f"Failed to merge message and emoji dataframes: {str(e)}")
 
 
 class QuotationResponseDataWrangler:
@@ -317,6 +317,7 @@ class QuotationResponseDataWrangler:
             df, ["comment_id", "comment_thread_id", "comment_from_recipient_id", "quote_id", "comment_date_sent", "comment_body"]
         )
 
+        # TODO : The way I renamed columns here is very wrong and all jumbled up. It needs to be fixed.
         try:
             quotation_df = df.rename(
                 columns={
