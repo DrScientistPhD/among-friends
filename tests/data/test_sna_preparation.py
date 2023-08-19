@@ -6,67 +6,127 @@ from src.data.sna_preparation import SnaDataWrangler
 
 
 class TestSnaDataWrangler:
-    """
-    Test class for the SnaDataWrangler class.
-    """
+    """Test class for the SnaDataWrangler class."""
 
     @pytest.fixture(autouse=True)
     def setup_class(self):
-        """
-        Fixture to set up resources before each test method.
-        """
+        """Fixture to set up resources before each test method."""
         self.fake = Faker()
-        self.sna_data_wrangler = SnaDataWrangler()
-        self.valid_columns = [
+        self.data_wrangler = SnaDataWrangler()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_standardize_response_react_dataframe_valid(self, iteration, sample_response_react_dataframe):
+        """
+        Test the standardize_response_react_dataframe function with valid input.
+        """
+        df = sample_response_react_dataframe
+        standardized_df = self.data_wrangler.standardize_response_react_dataframe(df)
+        expected_columns = [
+            "target_participant_id",
+            "target_datetime",
+            "source_participant_id",
+            "source_datetime",
+            "weight",
+            "interaction_category"
+        ]
+        assert set(standardized_df.columns) == set(expected_columns)
+        assert (standardized_df["interaction_category"] == "response").all()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_standardize_response_react_dataframe_invalid(self, iteration, sample_response_react_dataframe):
+        """
+        Test the standardize_response_react_dataframe function with columns missing.
+        """
+        # List of critical columns
+        critical_columns = [
             "comment_from_recipient_id",
             "comment_date_sent_datetime",
             "response_from_recipient_id",
             "response_date_sent_datetime",
-            "weight",
-            "reaction_author_id",
-            "reaction_date_sent_datetime",
-            "quotation_from_recipient_id",
-            "quotation_date_sent_datetime",
+            "weight"
         ]
 
-    @pytest.mark.parametrize("iteration", range(10))
-    def test_create_reacted_dataframe_valid(self, iteration, fake_response_weight_df):
-        """
-        Test to check if create_reacted_dataframe() creates a new DataFrame by subsetting columns and adding a reaction category.
-        """
-        # Randomly select some of the valid columns
-        random_cols = self.fake.random_elements(
-            elements=self.valid_columns,
-            length=self.fake.random_int(min=1, max=len(self.valid_columns)),
-        )
+        # Randomly choose a column to remove
+        column_to_remove = self.fake.random_element(elements=critical_columns)
+        df_invalid = sample_response_react_dataframe.drop(columns=column_to_remove)
 
-        reaction_category = "test_category"
-
-        new_data_frame = self.sna_data_wrangler.create_reacted_dataframe(
-            fake_response_weight_df, random_cols, reaction_category
-        )
-
-        assert isinstance(new_data_frame, pd.DataFrame)
-        assert list(new_data_frame.columns) == random_cols + ["interaction_category"]
-        assert new_data_frame["interaction_category"].unique()[0] == reaction_category
-
+        with pytest.raises(Exception):
+            self.data_wrangler.standardize_response_react_dataframe(df_invalid)
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_create_reacted_dataframe_invalid_input(self, iteration):
+    def test_standardize_emoji_react_dataframe_valid(self, iteration, sample_emoji_react_dataframe):
         """
-        Test to check if the function raises appropriate exceptions with invalid input.
+        Test the standardize_emoji_react_dataframe function with valid input.
         """
-        invalid_df = "invalid_data"  # Non-DataFrame input
-        columns_to_keep = self.valid_columns
-        interaction_category = "test_category"
+        df = sample_emoji_react_dataframe
+        standardized_df = self.data_wrangler.standardize_emoji_react_dataframe(df)
+        expected_columns = [
+            "target_participant_id",
+            "target_datetime",
+            "source_participant_id",
+            "source_datetime",
+            "weight",
+            "interaction_category"
+        ]
+        assert set(standardized_df.columns) == set(expected_columns)
+        assert (standardized_df["interaction_category"] == "emoji").all()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_standardize_emoji_react_dataframe_invalid(self, iteration, sample_emoji_react_dataframe):
+        """
+        Test the standardize_emoji_react_dataframe function with columns missing.
+        """
+        # List of critical columns
+        critical_columns = [
+            "comment_from_recipient_id",
+            "comment_date_sent_datetime",
+            "emoji_author_id",
+            "emoji_date_sent_datetime",
+            "weight"
+        ]
+
+        # Randomly choose a column to remove
+        column_to_remove = self.fake.random_element(elements=critical_columns)
+        df_invalid = sample_emoji_react_dataframe.drop(columns=column_to_remove)
 
         with pytest.raises(Exception):
-            self.sna_data_wrangler.create_reacted_dataframe(invalid_df, columns_to_keep, interaction_category)
+            self.data_wrangler.standardize_emoji_react_dataframe(df_invalid)
 
-        invalid_columns_to_keep = "invalid_columns"  # Non-List input for columns_to_keep
-        with pytest.raises(Exception):
-            self.sna_data_wrangler.create_reacted_dataframe(pd.DataFrame(), invalid_columns_to_keep, interaction_category)
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_standardize_quotation_react_dataframe_valid(self, iteration, sample_quotation_react_dataframe):
+        """
+        Test the standardize_quotation_react_dataframe function with valid input.
+        """
+        df = sample_quotation_react_dataframe
+        standardized_df = self.data_wrangler.standardize_quotation_react_dataframe(df)
+        expected_columns = [
+            "target_participant_id",
+            "target_datetime",
+            "source_participant_id",
+            "source_datetime",
+            "weight",
+            "interaction_category"
+        ]
+        assert set(standardized_df.columns) == set(expected_columns)
+        assert (standardized_df["interaction_category"] == "quotation").all()
 
-        invalid_interaction_category = 12345  # Non-string input for reaction_category
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_standardize_quotation_react_dataframe_invalid(self, iteration, sample_quotation_react_dataframe):
+        """
+        Test the standardize_emoji_react_dataframe function with columns missing.
+        """
+        # List of critical columns
+        critical_columns = [
+            "quotation_from_recipient_id",
+            "quotation_date_sent_datetime",
+            "response_from_recipient_id",
+            "response_date_sent_datetime",
+            "weight"
+        ]
+
+        # Randomly choose a column to remove
+        column_to_remove = self.fake.random_element(elements=critical_columns)
+        df_invalid = sample_quotation_react_dataframe.drop(columns=column_to_remove)
+
         with pytest.raises(Exception):
-            self.sna_data_wrangler.create_reacted_dataframe(pd.DataFrame(), columns_to_keep, invalid_interaction_category)
+            self.data_wrangler.standardize_quotation_react_dataframe(df_invalid)

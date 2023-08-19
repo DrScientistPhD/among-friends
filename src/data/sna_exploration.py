@@ -40,8 +40,7 @@ response_weight_df = DateTimeConverter.convert_unix_to_datetime(response_weight_
 response_weight_df = DateTimeConverter.convert_unix_to_datetime(response_weight_df, "response_date_sent")
 
 # Subset the response_weight_df and add an interaction category for each record
-response_cols = ["comment_from_recipient_id", "comment_date_sent_datetime", "response_from_recipient_id", "response_date_sent_datetime", "weight"]
-response_weight_slim_df = SnaDataWrangler.create_reacted_dataframe(response_weight_df, response_cols, "response")
+response_weight_slim_df = SnaDataWrangler.standardize_response_react_dataframe(response_weight_df)
 
 
 
@@ -65,8 +64,7 @@ emoji_weight_df = DateTimeConverter.convert_unix_to_datetime(emoji_weight_df, "c
 emoji_weight_df = DateTimeConverter.convert_unix_to_datetime(emoji_weight_df, "emoji_date_sent")
 
 # Subset the emoji_weight_df and add an interaction category for each record
-emoji_cols = ["comment_from_recipient_id", "comment_date_sent_datetime", "emoji_author_id", "emoji_date_sent_datetime", "weight"]
-emoji_weight_slim_df = SnaDataWrangler.create_reacted_dataframe(emoji_weight_df, emoji_cols, "emoji")
+emoji_weight_slim_df = SnaDataWrangler.standardize_emoji_react_dataframe(emoji_weight_df)
 
 
 
@@ -87,5 +85,4 @@ quotation_weight_df = DateTimeConverter.convert_unix_to_datetime(quotation_weigh
 quotation_weight_df = DateTimeConverter.convert_unix_to_datetime(quotation_weight_df, "response_date_sent")
 
 # Subset the response_weight_df and add an interaction category for each record
-quotation_cols = ["quotation_from_recipient_id", "quotation_date_sent_datetime", "response_from_recipient_id", "response_date_sent_datetime", "weight"]
 quotation_weight_slim_df = SnaDataWrangler.create_reacted_dataframe(quotation_weight_df, quotation_cols, "quotation")

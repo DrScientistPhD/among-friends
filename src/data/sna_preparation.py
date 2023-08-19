@@ -1,36 +1,149 @@
-import pandas as pd
 from typing import List
 
-from src.data.data_validation import (validate_columns_in_dataframe, validate_data_types, validate_dataframe)
+import pandas as pd
+
+from src.data.data_validation import validate_dataframe
 
 
 class SnaDataWrangler:
     @staticmethod
-    def create_reacted_dataframe(df: pd.DataFrame, columns_to_keep: List, interaction_category: str) -> pd.DataFrame:
+    def standardize_response_react_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Creates a new DataFrame by subsetting columns and adding a reaction category.
+        Creates a standardized dataframe for comment-response pairs by selecting only the relevant columns and adding
+        a reaction category.
 
         Args:
-            df (pd.DataFrame): The input DataFrame.
-            columns_to_keep (list): List of column names to keep in the DataFrame.
-            interaction_category (str): The category name for the "interaction_category" column.
+            df (df.DataFrame): The input comment-response DataFrame.
 
         Returns:
-            pd.DataFrame: A new DataFrame with the specified columns and reaction category.
+            pd.DataFrame: The standardized comment-response DataFrame.
 
-        Raise:
-
+        Raises:
+            TypeError: If df is not a pandas DataFrame.
+            Exception: If the standardization process fails.
         """
         # Validate input data
         validate_dataframe(df)
-        validate_data_types(interaction_category, str, "interaction_category")
-        validate_data_types(columns_to_keep, List, "columns_to_keep")
-        validate_columns_in_dataframe(df, columns_to_keep)
 
         try:
-            new_data_frame = df[columns_to_keep].copy()
-            new_data_frame["interaction_category"] = interaction_category
-            return new_data_frame
+            df = df.rename(
+                columns={
+                    "comment_from_recipient_id": "target_participant_id",
+                    "comment_date_sent_datetime": "target_datetime",
+                    "response_from_recipient_id": "source_participant_id",
+                    "response_date_sent_datetime": "source_datetime",
+                }
+            )
+
+            columns_to_keep = [
+                "target_participant_id",
+                "target_datetime",
+                "source_participant_id",
+                "source_datetime",
+                "weight",
+            ]
+
+            standardized_df = df[columns_to_keep].copy()
+
+            standardized_df["interaction_category"] = "response"
+            return standardized_df
 
         except Exception as e:
-            raise Exception(f"Failed to subset and assign new category to input dataframe.")
+            raise Exception(
+                f"Failed to subset and assign new category to input dataframe."
+            )
+
+    @staticmethod
+    def standardize_emoji_react_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Creates a standardized dataframe for comment-emoji pairs by selecting only the relevant columns and adding
+        a reaction category.
+
+        Args:
+            df (df.DataFrame): The input comment-emoji DataFrame.
+
+        Returns:
+            pd.DataFrame: The standardized comment-emoji DataFrame.
+
+        Raises:
+            TypeError: If df is not a pandas DataFrame.
+            Exception: If the standardization process fails.
+        """
+        # Validate input data
+        validate_dataframe(df)
+
+        try:
+            df = df.rename(
+                columns={
+                    "comment_from_recipient_id": "target_participant_id",
+                    "comment_date_sent_datetime": "target_datetime",
+                    "emoji_author_id": "source_participant_id",
+                    "emoji_date_sent_datetime": "source_datetime",
+                }
+            )
+
+            columns_to_keep = [
+                "target_participant_id",
+                "target_datetime",
+                "source_participant_id",
+                "source_datetime",
+                "weight",
+            ]
+
+            standardized_df = df[columns_to_keep].copy()
+
+            standardized_df["interaction_category"] = "emoji"
+            return standardized_df
+
+        except Exception as e:
+            raise Exception(
+                f"Failed to subset and assign new category to input dataframe."
+            )
+
+
+    @staticmethod
+    def standardize_quotation_react_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Creates a standardized dataframe for quotation-response pairs by selecting only the relevant columns and adding
+        a reaction category.
+
+        Args:
+            df (df.DataFrame): The input quotation-response DataFrame.
+
+        Returns:
+            pd.DataFrame: The standardized quotation-response DataFrame.
+
+        Raises:
+            TypeError: If df is not a pandas DataFrame.
+            Exception: If the standardization process fails.
+        """
+        # Validate input data
+        validate_dataframe(df)
+
+        try:
+            df = df.rename(
+                columns={
+                    "quotation_from_recipient_id": "target_participant_id",
+                    "quotation_date_sent_datetime": "target_datetime",
+                    "response_from_recipient_id": "source_participant_id",
+                    "response_date_sent_datetime": "source_datetime",
+                }
+            )
+
+            columns_to_keep = [
+                "target_participant_id",
+                "target_datetime",
+                "source_participant_id",
+                "source_datetime",
+                "weight",
+            ]
+
+            standardized_df = df[columns_to_keep].copy()
+
+            standardized_df["interaction_category"] = "quotation"
+            return standardized_df
+
+        except Exception as e:
+            raise Exception(
+                f"Failed to subset and assign new category to input dataframe."
+            )

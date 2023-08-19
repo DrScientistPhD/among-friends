@@ -184,42 +184,56 @@ def fake_quotation_response_df():
 
 
 @pytest.fixture
-def fake_response_weight_df():
+def sample_response_react_dataframe():
     """
-    Fixture to generate fake DataFrame data that represents the structure of any response weight DataFrame. Note, this
-    includes all possible columns from any dataframe the function takes.
-
-    Returns:
-        pd.DataFrame: Fake DataFrame with the expected columns.
+    Returns a sample DataFrame with randomly generated data for comment-response pairs.
     """
 
     n = 100
 
-    ids = [fake.random_int(min=1, max=1000) for _ in range(n)]
-    date_sent = [fake.random_int(min=1673137959372, max=1673378972279) for _ in range(n)]
-    body = [fake.sentence(nb_words=6) for _ in range(n)]
-    time_diff = [fake.random_int(min=0, max=10000) for _ in range(n)]
-    weight = [fake.random_number(digits=2) for _ in range(n)]
+    data = {
+        "comment_from_recipient_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "comment_date_sent_datetime": [fake.date_this_decade() for _ in range(n)],
+        "response_from_recipient_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "response_date_sent_datetime": [fake.date_this_decade() for _ in range(n)],
+        "weight": [fake.random_number(digits=2) for _ in range(n)],
+        "interaction_category": "response"
+    }
+    return pd.DataFrame(data)
 
-    return pd.DataFrame(
-        {
-            "comment_id": ids,
-            "comment_thread_id": [fake.random_int(min=1, max=3) for _ in range(n)],
-            "comment_from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
-            "quote_id": ids,
-            "comment_date_sent": date_sent,
-            "comment_body": body,
-            "response_id": ids,
-            "response_date_sent": date_sent,
-            "response_from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
-            "response_body": body,
-            "time_diff": time_diff,
-            "weight": weight,
-            "comment_date_sent_datetime": [fake.date_time() for _ in range(n)],
-            "response_date_sent_datetime": [fake.date_time() for _ in range(n)],
-            "reaction_author_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
-            "reaction_date_sent_datetime": [fake.date_time() for _ in range(n)],
-            "quotation_from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
-            "quotation_date_sent_datetime": [fake.date_time() for _ in range(n)]
-        }
-    )
+@pytest.fixture
+def sample_emoji_react_dataframe():
+    """
+    Returns a sample DataFrame with randomly generated data for comment-emoji pairs.
+    """
+
+    n = 100
+
+    data = {
+        "comment_from_recipient_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "comment_date_sent_datetime": [fake.date_this_decade() for _ in range(n)],
+        "emoji_author_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "emoji_date_sent_datetime": [fake.date_this_decade() for _ in range(n)],
+        "weight": [fake.random_number(digits=2) for _ in range(n)],
+        "interaction_category": "emoji"
+    }
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def sample_quotation_react_dataframe():
+    """
+    Returns a sample DataFrame with randomly generated data for quotation-response pairs.
+    """
+
+    n = 100
+
+    data = {
+        "quotation_from_recipient_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "quotation_date_sent_datetime": [fake.date_this_decade() for _ in range(n)],
+        "response_from_recipient_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "response_date_sent_datetime": [fake.date_this_decade() for _ in range(n)],
+        "weight": [fake.random_number(digits=2) for _ in range(n)],
+        "interaction_category": "quotation"
+    }
+    return pd.DataFrame(data)
