@@ -317,7 +317,6 @@ class QuotationResponseDataWrangler:
             df, ["comment_id", "comment_thread_id", "comment_from_recipient_id", "quote_id", "comment_date_sent", "comment_body"]
         )
 
-        # TODO : The way I renamed columns here is very wrong and all jumbled up. It needs to be fixed.
         try:
             quotation_df = df.rename(
                 columns={
@@ -333,8 +332,8 @@ class QuotationResponseDataWrangler:
                 columns={
                     "comment_id": "response_id",
                     "comment_date_sent": "response_date_sent",
-                    "thread_id": "response_thread_id",
-                    "comment_thread_id": "response_from_recipient_id",
+                    "comment_thread_id": "response_thread_id",
+                    "comment_from_recipient_id": "response_from_recipient_id",
                     "comment_body": "response_body",
                 }
             )

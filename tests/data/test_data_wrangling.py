@@ -286,8 +286,8 @@ class TestQuotationResponseDataWrangler:
         expected_columns = [
             "quotation_id", "quotation_date_sent", "quotation_thread_id",
             "quotation_from_recipient_id", "quotation_body", "quote_id",
-            "response_id", "response_date_sent", "response_from_recipient_id",
-            "comment_from_recipient_id", "response_body"
+            "response_id", "response_date_sent", "response_thread_id",
+            "response_from_recipient_id", "response_body"
         ]
         assert list(quotation_response_df.columns) == expected_columns
 
