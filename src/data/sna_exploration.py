@@ -1,7 +1,3 @@
-import emoji
-import numpy as np
-import pandas as pd
-
 from src.data.csv_importer import CSVImporter
 from src.data.data_wrangling import (DateTimeConverter, MessageDataWrangler,
                                      QuotationResponseDataWrangler,
@@ -85,4 +81,4 @@ quotation_weight_df = DateTimeConverter.convert_unix_to_datetime(quotation_weigh
 quotation_weight_df = DateTimeConverter.convert_unix_to_datetime(quotation_weight_df, "response_date_sent")
 
 # Subset the response_weight_df and add an interaction category for each record
-quotation_weight_slim_df = SnaDataWrangler.create_reacted_dataframe(quotation_weight_df, quotation_cols, "quotation")
+quotation_weight_slim_df = SnaDataWrangler.standardize_quotation_react_dataframe(quotation_weight_df)
