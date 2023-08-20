@@ -2,6 +2,7 @@ from src.data.data_validation import validate_data_types
 import os
 import pandas as pd
 
+
 class CSVImporter:
     @staticmethod
     def import_csv(file_name: str) -> pd.DataFrame:

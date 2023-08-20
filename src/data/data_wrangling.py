@@ -60,28 +60,33 @@ class DateTimeConverter:
 
 class MessageDataWrangler:
     @staticmethod
-    def filter_and_rename_messages_df(df: pd.DataFrame) -> pd.DataFrame:
+    def filter_and_rename_messages_df(df: pd.DataFrame, thread_id: int) -> pd.DataFrame:
         """
         Filters and renames columns of a given DataFrame representing messages.
 
         Args:
             df (pd.DataFrame): The original DataFrame to be filtered and renamed.
+            thread_id (int): The thread_id to filter by.
 
         Returns:
             pd.DataFrame: A new DataFrame with the filtered and renamed columns.
 
         Raises:
-            TypeError: If df is not a pandas DataFrame.
+            TypeError: If df is not a pandas DataFrame, or thread_id is not an int.
             KeyError: If the specified timestamp column does not exist in the DataFrame.
+            ValueError: If there are no records that meet the specified thread_id filter.
             Exception: If there's an error during the filtering and renaming process.
         """
-        # TODO Implement ability to specify by comment_thread_id
-
         # Validate input data types
         validate_dataframe(df)
+        validate_data_types(thread_id, int, "thread_id")
         validate_columns_in_dataframe(
             df, ["_id", "thread_id", "from_recipient_id", "date_sent", "body"]
         )
+
+        # Check if there are any records that meet the specified thread_id filter
+        if df[df['thread_id'] == thread_id].empty:
+            raise ValueError(f"No records found for thread_id: {thread_id}")
 
         try:
             renamed_df = df.rename(
@@ -133,12 +138,15 @@ class MessageDataWrangler:
             pd.DataFrame: Final processed pandas DataFrame, with original comments and selected responses.
 
         Raises:
-            TypeError: If df is not a pandas DataFrame, or group_participants_n is not an int.
-            ValueError: If an unexpected error occurs during conversion.
-            Exception: If there's an error while concatenating comment threads.
+            TypeError: If input df is not a pandas DataFrame, or group_participants_n is not an int.
+            KeyError: If the specified columns do not exist in the DataFrame.
+            ValueError: If there's an error while concatenating comment threads.
         """
         # Validate input data types
         validate_dataframe(df_pd)
+        validate_columns_in_dataframe(
+            df_pd, ["comment_id", "comment_date_sent", "comment_from_recipient_id", "comment_body"]
+        )
         validate_data_types(group_participants_n, int, "group_participants_n")
 
         try:
@@ -152,6 +160,9 @@ class MessageDataWrangler:
                 "comment_from_recipient_id": "response_from_recipient_id",
                 "comment_body": "response_body",
             }
+
+            # Sort dataframe by comment_date_set to ensure proper comment-response linkage
+            df_polars = df_polars.sort(by="comment_date_sent")
 
             dfs = []
 
@@ -193,11 +204,11 @@ class MessageDataWrangler:
             )
 
 
-class ReactionDataWrangler:
+class EmojiDataWrangler:
     @staticmethod
-    def filter_and_rename_reactions_df(df: pd.DataFrame) -> pd.DataFrame:
+    def filter_and_rename_emojis_df(df: pd.DataFrame) -> pd.DataFrame:
         """
-        Filters and renames columns of a given DataFrame representing reactions.
+        Filters and renames columns of a given DataFrame representing emojis.
 
         Args:
             df (pd.DataFrame): The original DataFrame to be filtered and renamed.
@@ -217,23 +228,23 @@ class ReactionDataWrangler:
         try:
             renamed_df = df.rename(
                 columns={
-                    "_id": "reaction_id",
-                    "author_id": "reaction_author_id",
-                    "date_sent": "reaction_date_sent",
+                    "_id": "emoji_id",
+                    "author_id": "emoji_author_id",
+                    "date_sent": "emoji_date_sent",
                 }
             )
 
             columns_to_filter = [
-                "reaction_id",
+                "emoji_id",
                 "message_id",
-                "reaction_author_id",
+                "emoji_author_id",
                 "emoji",
-                "reaction_date_sent",
+                "emoji_date_sent",
             ]
 
             slim_df = renamed_df[columns_to_filter].copy()
 
-            slim_df["reaction_translation"] = slim_df["emoji"].apply(
+            slim_df["emoji_translation"] = slim_df["emoji"].apply(
                 EmojiTranslator.translate_emoji
             )
 
@@ -241,21 +252,21 @@ class ReactionDataWrangler:
 
         except Exception as e:
             raise Exception(
-                f"Failed to filter and rename reactions DataFrame: {str(e)}"
+                f"Failed to filter and rename emojis DataFrame: {str(e)}"
             )
 
     @staticmethod
-    def merge_message_with_reaction(message_df: pd.DataFrame, reaction_df: pd.DataFrame) -> pd.DataFrame:
+    def merge_message_with_emoji(message_df: pd.DataFrame, emoji_df: pd.DataFrame) -> pd.DataFrame:
         """
-        Merges two DataFrames, one containing message details and the other containing reaction details,
-        based on the 'comment_id' in the message DataFrame and the 'message_id' in the reaction DataFrame.
+        Merges two DataFrames, one containing message details and the other containing emoji details,
+        based on the 'comment_id' in the message DataFrame and the 'message_id' in the emoji DataFrame.
 
         Args:
             message_df (pd.DataFrame): DataFrame containing message details, with a 'comment_id' column.
-            reaction_df (pd.DataFrame): DataFrame containing reaction details, with a 'message_id' column.
+            emoji_df (pd.DataFrame): DataFrame containing emoji details, with a 'message_id' column.
 
         Returns:
-            pd.DataFrame: Merged DataFrame containing both message and reaction details.
+            pd.DataFrame: Merged DataFrame containing both message and emoji details.
 
         Raises:
             TypeError: If either of the input DataFrames is not a pandas DataFrame.
@@ -264,23 +275,23 @@ class ReactionDataWrangler:
         """
         # Validate input data
         validate_dataframe(message_df)
-        validate_dataframe(reaction_df)
+        validate_dataframe(emoji_df)
         validate_columns_in_dataframe(message_df, ['comment_id'])
-        validate_columns_in_dataframe(reaction_df, ['message_id'])
+        validate_columns_in_dataframe(emoji_df, ['message_id'])
 
         try:
-            # Merge message and reaction dataframes on the specified columns
-            df_message_reaction = pd.merge(
+            # Merge message and emoji dataframes on the specified columns
+            df_message_emoji = pd.merge(
                 message_df,
-                reaction_df,
+                emoji_df,
                 left_on="comment_id",
                 right_on="message_id",
-                suffixes=("", "_reaction"),
+                suffixes=("", "_emoji"),
             )
-            return df_message_reaction
+            return df_message_emoji
 
         except Exception as e:
-            raise Exception(f"Failed to merge message and reaction dataframes: {str(e)}")
+            raise Exception(f"Failed to merge message and emoji dataframes: {str(e)}")
 
 
 class QuotationResponseDataWrangler:
@@ -321,8 +332,8 @@ class QuotationResponseDataWrangler:
                 columns={
                     "comment_id": "response_id",
                     "comment_date_sent": "response_date_sent",
-                    "thread_id": "response_thread_id",
-                    "comment_thread_id": "response_from_recipient_id",
+                    "comment_thread_id": "response_thread_id",
+                    "comment_from_recipient_id": "response_from_recipient_id",
                     "comment_body": "response_body",
                 }
             )
