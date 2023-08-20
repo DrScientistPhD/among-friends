@@ -184,7 +184,7 @@ def fake_quotation_response_df():
 
 
 @pytest.fixture
-def sample_response_react_dataframe():
+def fake_response_react_dataframe():
     """
     Returns a sample DataFrame with randomly generated data for comment-response pairs.
     """

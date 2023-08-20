@@ -1,8 +1,12 @@
-from typing import List
+from typing import Optional
 
 import pandas as pd
 
-from src.data.data_validation import validate_dataframe
+from src.data.data_validation import validate_data_types, validate_dataframe
+from src.data.data_wrangling import (DateTimeConverter, EmojiDataWrangler,
+                                     MessageDataWrangler,
+                                     QuotationResponseDataWrangler)
+from src.data.time_calculations import TimeCalculations
 
 
 class SnaDataWrangler:
@@ -100,7 +104,6 @@ class SnaDataWrangler:
                 f"Failed to subset and assign new category to input dataframe."
             )
 
-
     @staticmethod
     def standardize_quotation_react_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -146,4 +149,95 @@ class SnaDataWrangler:
         except Exception as e:
             raise Exception(
                 f"Failed to subset and assign new category to input dataframe."
+            )
+
+    @staticmethod
+    def process_data_for_sna(
+        interaction_type: str,
+        base_value: float,
+        message_slim_df: pd.DataFrame,
+        emoji_slim_df: Optional[pd.DataFrame] = None,
+    ) -> pd.DataFrame:
+        """
+        Process data based on the data type.
+
+        Args:
+            interaction_type (str): The type of interaction to be processed. One of "message", "emoji", "quotation".
+            base_value (float): Base value used to derive the weight of interactions.
+            message_slim_df (DataFrame): A preprocessed message dataframe.
+            emoji_slim_df (Optional[DataFrame]): A preprocessed emoji dataframe. Required only if interaction_type is "emoji".
+
+        Returns:
+            DataFrame: The processed dataframe.
+
+        Raises:
+            TypeError: If the interaction_type is not a str, or the base_value is not a float, or the dataframes are not valid.
+            ValueError: If the provided `data_type` is not one of "response", "emoji", "quotation".
+            Exception: For other exceptions during processing.
+        """
+
+        # Validate input data types
+        validate_data_types(interaction_type, str, "interaction_type")
+        validate_data_types(base_value, float, "base_value")
+        validate_dataframe(message_slim_df)
+
+        if interaction_type == "emoji":
+            validate_dataframe(emoji_slim_df)
+
+        try:
+            if interaction_type == "response":
+                group_n = message_slim_df["comment_from_recipient_id"].nunique()
+                processed_df = MessageDataWrangler.concatenate_comment_threads(
+                    message_slim_df, group_n
+                )
+            elif interaction_type == "emoji":
+                processed_df = EmojiDataWrangler.merge_message_with_emoji(
+                    emoji_slim_df, message_slim_df
+                )
+            elif interaction_type == "quotation":
+                processed_df = (
+                    QuotationResponseDataWrangler.create_quotation_response_df(
+                        message_slim_df
+                    )
+                )
+            else:
+                raise ValueError(
+                    f"Invalid data_type: {interaction_type}. Expected one of ['response', 'emoji', 'quotation']."
+                )
+
+            # Calculate time differences, decay constants, and weights
+            time_col = interaction_type + "_date_sent"
+            processed_df = TimeCalculations.calculate_time_diff(
+                processed_df, time_col, "comment_date_sent"
+            )
+            decay_constant = TimeCalculations.calculate_decay_constant(
+                processed_df, "time_diff"
+            )
+            processed_df = TimeCalculations.calculate_weight(
+                processed_df, decay_constant, base_value
+            )
+
+            # Convert Unix timestamps to readable datetime formats
+            processed_df = DateTimeConverter.convert_unix_to_datetime(
+                processed_df, "comment_date_sent"
+            )
+            processed_df = DateTimeConverter.convert_unix_to_datetime(
+                processed_df, time_col
+            )
+
+            # Standardize dataframe
+            if interaction_type == "response":
+                return SnaDataWrangler.standardize_response_react_dataframe(
+                    processed_df
+                )
+            elif interaction_type == "emoji":
+                return SnaDataWrangler.standardize_emoji_react_dataframe(processed_df)
+            elif interaction_type == "quotation":
+                return SnaDataWrangler.standardize_quotation_react_dataframe(
+                    processed_df
+                )
+
+        except Exception as e:
+            raise Exception(
+                f"An error occurred while processing {interaction_type} data: {e}"
             )
