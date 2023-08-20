@@ -171,3 +171,26 @@ class TestSnaDataWrangler:
         with pytest.raises(TypeError):
             self.sna_data_wrangler.process_data_for_sna("response", "invalid_base_value", fake_message_slim_df)
 
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_concatenate_dataframes_vertically_valid(self, iteration, fake_message_slim_df):
+        """
+        Test the concatenate_dataframes_vertically function with valid input.
+        """
+        n = self.fake.random_int(min=1, max=3)
+        dfs = [fake_message_slim_df for _ in range(n)]
+        concatenated_df = self.sna_data_wrangler.concatenate_dataframes_vertically(dfs)
+
+        assert len(concatenated_df) == len(fake_message_slim_df) * n
+        assert list(concatenated_df.columns) == list(fake_message_slim_df.columns)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_concatenate_dataframes_vertically_invalid(self, iteration, fake_message_slim_df):
+        """
+        Test the concatenate_dataframes_vertically function with invalid input (dataframes with different columns).
+        """
+        df_with_extra_column = fake_message_slim_df.copy()
+        df_with_extra_column["extra_column"] = range(len(df_with_extra_column))
+        dfs = [fake_message_slim_df, df_with_extra_column]
+
+        with pytest.raises(ValueError):
+            self.sna_data_wrangler.concatenate_dataframes_vertically(dfs)

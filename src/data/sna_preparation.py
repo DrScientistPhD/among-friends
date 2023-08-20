@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 
@@ -160,6 +160,7 @@ class SnaDataWrangler:
     ) -> pd.DataFrame:
         """
         Process data based on the data type.
+        Never make a function like this again. Next time, plan out column names better in advance.
 
         Args:
             interaction_type (str): The type of interaction to be processed. One of "message", "emoji", "quotation".
@@ -192,7 +193,7 @@ class SnaDataWrangler:
                 )
             elif interaction_type == "emoji":
                 processed_df = EmojiDataWrangler.merge_message_with_emoji(
-                    emoji_slim_df, message_slim_df
+                    message_slim_df, emoji_slim_df
                 )
             elif interaction_type == "quotation":
                 processed_df = (
@@ -206,9 +207,15 @@ class SnaDataWrangler:
                 )
 
             # Calculate time differences, decay constants, and weights
-            time_col = interaction_type + "_date_sent"
+            if interaction_type == "quotation":
+                time_col_1 = "response_date_sent"
+                time_col_2 = "quotation_date_sent"
+            else:
+                time_col_1 = interaction_type + "_date_sent"
+                time_col_2 = "comment_date_sent"
+
             processed_df = TimeCalculations.calculate_time_diff(
-                processed_df, time_col, "comment_date_sent"
+                processed_df, time_col_1, time_col_2
             )
             decay_constant = TimeCalculations.calculate_decay_constant(
                 processed_df, "time_diff"
@@ -219,10 +226,10 @@ class SnaDataWrangler:
 
             # Convert Unix timestamps to readable datetime formats
             processed_df = DateTimeConverter.convert_unix_to_datetime(
-                processed_df, "comment_date_sent"
+                processed_df, time_col_2
             )
             processed_df = DateTimeConverter.convert_unix_to_datetime(
-                processed_df, time_col
+                processed_df, time_col_1
             )
 
             # Standardize dataframe
@@ -241,3 +248,28 @@ class SnaDataWrangler:
             raise Exception(
                 f"An error occurred while processing {interaction_type} data: {e}"
             )
+
+    @staticmethod
+    def concatenate_dataframes_vertically(dfs: List[pd.DataFrame]) -> pd.DataFrame:
+        """
+        Concatenate a list of pandas DataFrames vertically after ensuring they all have the same columns.
+
+        Args:
+            dfs (List[pd.DataFrame]): List of pandas DataFrames to concatenate.
+
+        Returns:
+            pd.DataFrame: The concatenated DataFrame.
+
+        Raises:
+            ValueError: If not all DataFrames have the same column names.
+        """
+        # Check if all dataframes have the same columns
+        columns_set = set(dfs[0].columns)
+        for df in dfs[1:]:
+            if set(df.columns) != columns_set:
+                raise ValueError("Not all DataFrames have the same column names.")
+
+        # Concatenate dataframes vertically
+        concatenated_df = pd.concat(dfs, axis=0, ignore_index=True)
+
+        return concatenated_df
