@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from faker import Faker
+import networkx as nx
 
 fake = Faker()
 
@@ -201,6 +202,7 @@ def fake_response_react_dataframe():
     }
     return pd.DataFrame(data)
 
+
 @pytest.fixture
 def sample_emoji_react_dataframe():
     """
@@ -221,7 +223,7 @@ def sample_emoji_react_dataframe():
 
 
 @pytest.fixture
-def sample_quotation_react_dataframe():
+def fake_quotation_react_dataframe():
     """
     Returns a sample DataFrame with randomly generated data for quotation-response pairs.
     """
@@ -237,3 +239,50 @@ def sample_quotation_react_dataframe():
         "interaction_category": "quotation"
     }
     return pd.DataFrame(data)
+
+
+@pytest.fixture
+def fake_nodes_edges_dataframe():
+    """
+    Returns a sample DataFrame with randomly generated data for the nodes_edges dataframe.
+    """
+
+    n = 100
+
+    data = {
+        "target_participant_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "target_datetime": [fake.date_this_decade() for _ in range(n)],
+        "source_participant_id": [fake.random_int(min=1, max=100) for _ in range(n)],
+        "source_datetime": [fake.date_this_decade() for _ in range(n)],
+        "weight": [fake.random_number(digits=2) for _ in range(n)],
+        "interaction_category": [fake.random_element(elements=("response", "quotation", "emoji")) for _ in range(n)]
+    }
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def fake_network_graph():
+    """
+    Returns a sample directed graph (nx.DiGraph) with randomly generated nodes and edges.
+    """
+
+    g = nx.DiGraph()
+
+    # Add nodes
+    node_ids = set()  # To track the unique node IDs
+    while len(node_ids) < 10:
+        node_ids.add(fake.random_int(min=1, max=100))
+    for node_id in node_ids:
+        g.add_node(node_id)
+
+    # Add edges with weights and interaction_category
+    for _ in range(15):
+        source, target = fake.random_sample(elements=list(g.nodes()), length=2)
+        g.add_edge(
+            source,
+            target,
+            weight=fake.random_number(digits=2),
+            interaction_category=fake.random_element(elements=("response", "quotation", "emoji"))
+        )
+
+    return g

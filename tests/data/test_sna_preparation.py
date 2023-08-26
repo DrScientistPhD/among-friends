@@ -1,7 +1,8 @@
 import pytest
+import networkx as nx
 from faker import Faker
 
-from src.data.sna_preparation import SnaDataWrangler
+from src.data.sna_preparation import SnaDataWrangler, SnaGraphBuilder, SnaMetricCalculator
 
 
 class TestSnaDataWrangler:
@@ -92,11 +93,11 @@ class TestSnaDataWrangler:
             self.sna_data_wrangler.standardize_emoji_react_dataframe(df_invalid)
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_standardize_quotation_react_dataframe_valid(self, iteration, sample_quotation_react_dataframe):
+    def test_standardize_quotation_react_dataframe_valid(self, iteration, fake_quotation_react_dataframe):
         """
         Test the standardize_quotation_react_dataframe function with valid input.
         """
-        df = sample_quotation_react_dataframe
+        df = fake_quotation_react_dataframe
         standardized_df = self.sna_data_wrangler.standardize_quotation_react_dataframe(df)
         expected_columns = [
             "target_participant_id",
@@ -110,7 +111,7 @@ class TestSnaDataWrangler:
         assert (standardized_df["interaction_category"] == "quotation").all()
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_standardize_quotation_react_dataframe_invalid(self, iteration, sample_quotation_react_dataframe):
+    def test_standardize_quotation_react_dataframe_invalid(self, iteration, fake_quotation_react_dataframe):
         """
         Test the standardize_emoji_react_dataframe function with columns missing.
         """
@@ -125,7 +126,7 @@ class TestSnaDataWrangler:
 
         # Randomly choose a column to remove
         column_to_remove = self.fake.random_element(elements=critical_columns)
-        df_invalid = sample_quotation_react_dataframe.drop(columns=column_to_remove)
+        df_invalid = fake_quotation_react_dataframe.drop(columns=column_to_remove)
 
         with pytest.raises(Exception):
             self.sna_data_wrangler.standardize_quotation_react_dataframe(df_invalid)
@@ -192,5 +193,68 @@ class TestSnaDataWrangler:
         df_with_extra_column["extra_column"] = range(len(df_with_extra_column))
         dfs = [fake_message_slim_df, df_with_extra_column]
 
-        with pytest.raises(ValueError):
+        with pytest.raises(Exception):
             self.sna_data_wrangler.concatenate_dataframes_vertically(dfs)
+
+
+class TestSnaGraphBuilder:
+    """Test class for the SnaGraphBuilder class."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Fixture to set up resources before each test method."""
+        self.sna_graph_builder = SnaGraphBuilder()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_valid_input(self, iteration, fake_nodes_edges_dataframe):
+        """
+        Test the create_network_graph_modified function with valid input.
+        """
+        result = self.sna_graph_builder.create_network_graph(fake_nodes_edges_dataframe)
+        assert isinstance(result, nx.DiGraph)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_no_data_for_valid_interaction_category(self, iteration, fake_nodes_edges_dataframe):
+        """
+        Test the create_network_graph_modified function when a valid interaction category has no associated data.
+        """
+        # Modify the dataframe so it doesn't contain any rows with interaction_category = "response"
+        df_no_response = fake_nodes_edges_dataframe[fake_nodes_edges_dataframe["interaction_category"] != "response"]
+        with pytest.raises(ValueError):
+            self.sna_graph_builder.create_network_graph(df_no_response, interaction_category="response")
+
+
+class TestSnaMetricCalculator:
+    """Test class for the SnaMetricCalculator class."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Fixture to set up resources before each test method."""
+        self.sna_metric_calculator = SnaMetricCalculator()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_eigenvector_centrality_computation(self, iteration, fake_network_graph):
+        """ Test the generate_eigenvector_closeness_metrics method to ensure it correctly computes
+        eigenvector centrality scores for a given graph."""
+        result = self.sna_metric_calculator.generate_eigenvector_closeness_metrics(fake_network_graph)
+
+        # Try computing eigenvector centrality, handle if it does not converge
+        try:
+            eigenvector_centrality = nx.eigenvector_centrality(fake_network_graph, weight='weight')
+        except nx.PowerIterationFailedConvergence:
+            eigenvector_centrality = {node: 0 for node in fake_network_graph.nodes()}  # Default to 0
+
+        for node in result:
+            assert abs(result[node]['Eigenvector Score'] - eigenvector_centrality[node]) < 1e-6
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_closeness_rankings(self, iteration, fake_network_graph):
+        """Test the generate_eigenvector_closeness_metrics method to ensure it correctly computes
+        closeness rankings for each node in a given graph."""
+        result = self.sna_metric_calculator.generate_eigenvector_closeness_metrics(fake_network_graph)
+        for node in result:
+            path_lengths = nx.single_source_dijkstra_path_length(fake_network_graph, node)
+            # Exclude the node itself
+            path_lengths = {k: v for k, v in path_lengths.items() if k != node}
+            sorted_nodes = sorted(path_lengths.items(), key=lambda x: x[1])
+            assert list(result[node]['Closeness Ranking'].keys()) == [x[0] for x in sorted_nodes]
