@@ -25,6 +25,7 @@ class TimeCalculations:
 
         Raises:
             Exception: If there's an error during the time difference calculation.
+            Warning: If there is a negative time difference
         """
         # TODO: Need to figure out why some time_diff values are negative
 
