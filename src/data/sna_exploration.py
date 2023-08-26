@@ -1,7 +1,7 @@
 from src.data.csv_importer import CSVImporter
 from src.data.data_wrangling import (MessageDataWrangler,
                                      EmojiDataWrangler)
-from src.data.sna_preparation import SnaDataWrangler
+from src.data.sna_preparation import SnaDataWrangler, SnaGraphBuilder, SnaMetricCalculator
 
 # Import message.csv and reaction.csv
 message_df = CSVImporter.import_csv("message")
@@ -19,3 +19,8 @@ quotation_weight_slim_df = SnaDataWrangler.process_data_for_sna("quotation", 2.0
 # Vertically concatenate all interactions dataframes
 nodes_edges_df = SnaDataWrangler.concatenate_dataframes_vertically([response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df])
 
+# Create Network Graph
+network_graph = SnaGraphBuilder.create_network_graph(nodes_edges_df)
+
+# Calculate In-Eigenvector centrality and closeness metrics
+eigenvector_closeness_metrics = SnaMetricCalculator.generate_eigenvector_closeness_metrics(network_graph)
