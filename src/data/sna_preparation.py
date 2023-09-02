@@ -2,11 +2,17 @@ from typing import List, Optional
 
 import pandas as pd
 
-from src.data.data_validation import (validate_columns_in_dataframe,
-                                      validate_data_types, validate_dataframe)
-from src.data.data_wrangling import (DateTimeConverter, EmojiDataWrangler,
-                                     MessageDataWrangler,
-                                     QuotationResponseDataWrangler)
+from src.data.data_validation import (
+    validate_columns_in_dataframe,
+    validate_data_types,
+    validate_dataframe,
+)
+from src.data.data_wrangling import (
+    DateTimeConverter,
+    EmojiDataWrangler,
+    MessageDataWrangler,
+    QuotationResponseDataWrangler,
+)
 from src.data.time_calculations import TimeCalculations
 
 
@@ -37,7 +43,7 @@ class SnaDataWrangler:
                 "comment_date_sent_datetime",
                 "response_from_recipient_id",
                 "response_date_sent_datetime",
-                "weight"
+                "weight",
             ],
         )
 
@@ -95,7 +101,7 @@ class SnaDataWrangler:
                 "comment_date_sent_datetime",
                 "emoji_author_id",
                 "emoji_date_sent_datetime",
-                "weight"
+                "weight",
             ],
         )
 
@@ -153,7 +159,7 @@ class SnaDataWrangler:
                 "quotation_date_sent_datetime",
                 "response_from_recipient_id",
                 "response_date_sent_datetime",
-                "weight"
+                "weight",
             ],
         )
 
