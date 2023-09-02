@@ -17,3 +17,5 @@ faker==19.2.0
 pytest-mock==3.11.1
 numpy==1.25.1
 networkx==3.1
+panel==1.2.1
+plotly==5.16.1
