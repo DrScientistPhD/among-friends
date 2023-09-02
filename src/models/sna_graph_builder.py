@@ -4,8 +4,11 @@ from typing import Dict, Optional
 import networkx as nx
 import pandas as pd
 
-from src.data.data_validation import (validate_columns_in_dataframe,
-                                      validate_data_types, validate_dataframe)
+from src.data.data_validation import (
+    validate_columns_in_dataframe,
+    validate_data_types,
+    validate_dataframe,
+)
 
 
 class SnaGraphBuilder:
@@ -92,16 +95,15 @@ class SnaGraphBuilder:
 
 class SnaMetricCalculator:
     @staticmethod
-    def generate_eigenvector_closeness_metrics(graph: nx.DiGraph) -> Dict:
+    def generate_eigenvector_metrics(graph: nx.DiGraph) -> Dict[str, dict]:
         """
-        Generate a hierarchical data structure containing eigenvector centrality rank, eigenvector centrality score,
-        and closeness rankings for each node.
+        Generate eigenvector centrality rank and score for each node.
 
         Args:
             graph (nx.DiGraph): A directed graph.
 
         Returns:
-            A hierarchical data structure.
+            A dictionary containing eigenvector rank and score for each node.
 
         Raises:
             TypeError: If the input graph is not of type nx.DiGraph.
@@ -112,31 +114,54 @@ class SnaMetricCalculator:
 
         # Attempt to compute eigenvector centrality
         try:
-            eigenvector_centrality = nx.eigenvector_centrality(graph, weight='weight')
+            eigenvector_centrality = nx.eigenvector_centrality(graph, weight="weight")
         except nx.PowerIterationFailedConvergence:
-            warnings.warn("Eigenvector centrality failed to converge using default iterations. Setting default values.")
+            warnings.warn(
+                "Eigenvector centrality failed to converge using default iterations. Setting default values."
+            )
             eigenvector_centrality = {node: 0 for node in graph.nodes()}  # Default to 0
 
-        eigenvector_ranking = {node: rank for rank, node in
-                               enumerate(sorted(eigenvector_centrality, key=eigenvector_centrality.get, reverse=True),
-                                         1)}
+        eigenvector_ranking = {
+            node: rank
+            for rank, node in enumerate(
+                sorted(
+                    eigenvector_centrality, key=eigenvector_centrality.get, reverse=True
+                ),
+                1,
+            )
+        }
 
-        # Initialize the hierarchical data structure
-        hierarchy = {}
+        return {
+            "Eigenvector Rank": eigenvector_ranking,
+            "Eigenvector Score": eigenvector_centrality
+        }
+
+    @staticmethod
+    def generate_closeness_metrics(graph: nx.DiGraph) -> Dict:
+        """
+        Generate closeness rankings for each node.
+
+        Args:
+            graph (nx.DiGraph): A directed graph.
+
+        Returns:
+            A dictionary containing closeness rankings for each node.
+
+        Raises:
+            TypeError: If the input graph is not of type nx.DiGraph.
+        """
+
+        closeness_ranking = {}
 
         for node in graph.nodes():
-            hierarchy[node] = {
-                "Eigenvector Rank": eigenvector_ranking[node],
-                "Eigenvector Score": eigenvector_centrality[node],
-                "Closeness Ranking": {}
-            }
-
             # Compute closeness rankings for each node
             path_lengths = nx.single_source_dijkstra_path_length(graph, node)
             # Filter out the current node itself from the closeness rankings
             filtered_path_lengths = {k: v for k, v in path_lengths.items() if k != node}
             # Sort the nodes in descending order (i.e., closest nodes first)
             sorted_nodes = sorted(filtered_path_lengths.items(), key=lambda x: x[1])
-            hierarchy[node]["Closeness Ranking"] = {node: distance for node, distance in sorted_nodes}
+            closeness_ranking[node] = {
+                node: distance for node, distance in sorted_nodes
+            }
 
-        return hierarchy
+        return {"Closeness Ranking": closeness_ranking}
