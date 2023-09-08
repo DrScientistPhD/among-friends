@@ -149,19 +149,39 @@ class SnaMetricCalculator:
 
         Raises:
             TypeError: If the input graph is not of type nx.DiGraph.
+            Warning: If not all nodes in the graph are reachable.
         """
 
+        # Validate input data types
+        if not isinstance(graph, nx.DiGraph):
+            raise TypeError(f"Expected input of type nx.DiGraph but got {type(graph)}.")
+
         closeness_ranking = {}
+        closeness_distance = {}
 
         for node in graph.nodes():
             # Compute closeness rankings for each node
             path_lengths = nx.single_source_dijkstra_path_length(graph, node)
+
+            # Warning if not all nodes are reachable
+            if len(path_lengths) < len(graph.nodes()):
+                warnings.warn(f"Not all nodes are reachable from node {node}. Some distances might be missing.")
+
             # Filter out the current node itself from the closeness rankings
             filtered_path_lengths = {k: v for k, v in path_lengths.items() if k != node}
-            # Sort the nodes in descending order (i.e., closest nodes first)
+
+            # Sort the nodes in ascending order (i.e., closest nodes first)
             sorted_nodes = sorted(filtered_path_lengths.items(), key=lambda x: x[1])
-            closeness_ranking[node] = {
-                node: distance for node, distance in sorted_nodes
+
+            closeness_distance[node] = {
+                n: distance for n, distance in sorted_nodes
             }
 
-        return {"Closeness Ranking": closeness_ranking}
+            closeness_ranking[node] = {
+                n: rank for rank, (n, _) in enumerate(sorted_nodes, start=1)
+            }
+
+        return {
+            "Closeness Rank": closeness_ranking,
+            "Closeness Distance": closeness_distance
+        }
