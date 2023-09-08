@@ -39,7 +39,7 @@ min_date = nodes_edges_df["target_datetime"].apply(pd.Timestamp).min()
 max_date = nodes_edges_df["target_datetime"].apply(pd.Timestamp).max()
 
 date_range_slider = pn.widgets.DateRangeSlider(
-    name='Date Range Selector',
+    name='Group Chat Date Range',
     start=min_date,
     end=max_date,
     value=(min_date, max_date),
@@ -74,7 +74,7 @@ def generate_filtered_graph(date_range):
     return G, participants, pos, eigenvector_metrics
 
 G, participants, pos, _ = generate_filtered_graph((min_date, max_date))
-node_selector = pn.widgets.Select(options=sorted(participants), name='Selected Participant')
+node_selector = pn.widgets.Select(options=sorted(participants), name='Group Chat Participant')
 
 @pn.depends(node_selector.param.value, date_range_slider.param.value)
 def update_eigenvector_ranking_label(selected_node, date_range):
@@ -193,7 +193,7 @@ class SocialNetworkPage:
         node_selector.param.watch(update_closeness_table, 'value')
         date_range_slider.param.watch(update_closeness_table, 'value')
         sidebar = pn.Column(node_selector, eigenvector_ranking_label, date_range_slider, start_date_label, end_date_label, sizing_mode='stretch_height')
-        closeness_table_title = pn.pane.Markdown("### Participant Closeness Rankings")
+        closeness_table_title = pn.pane.Markdown("### Co-Participant Closeness Rankings")
         closeness_table_layout = pn.Column(closeness_table_title, self.closeness_table, sizing_mode='stretch_width')
         self.content = pn.Row(sidebar, self.graph_pane, closeness_table_layout, sizing_mode='stretch_width')
 
