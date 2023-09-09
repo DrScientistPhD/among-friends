@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 import pandas as pd
+from faker import Faker
 
 from src.data.data_validation import (
     validate_columns_in_dataframe,
@@ -321,3 +322,36 @@ class SnaDataWrangler:
             raise Exception(
                 f"An error occurred while processing concatenating dataframes data: {e}"
             )
+
+
+class NodesEdgesDataProcessor:
+    def __init__(self):
+        self.fake = Faker()
+
+    def fake_nodes_edges_dataframe(self):
+        n = 100
+        data = {
+            "target_participant_id": [
+                self.fake.random_int(min=1, max=10) for _ in range(n)
+            ],
+            "target_datetime": [self.fake.date_this_decade() for _ in range(n)],
+            "source_participant_id": [
+                self.fake.random_int(min=1, max=10) for _ in range(n)
+            ],
+            "source_datetime": [self.fake.date_this_decade() for _ in range(n)],
+            "weight": [self.fake.random_number(digits=2) for _ in range(n)],
+            "interaction_category": [
+                self.fake.random_element(elements=("response", "quotation", "emoji"))
+                for _ in range(n)
+            ],
+        }
+        return pd.DataFrame(data)
+
+    @staticmethod
+    def filter_dataframe_by_dates(df, start_date, end_date):
+        df["target_datetime"] = pd.to_datetime(df["target_datetime"])
+        df["source_datetime"] = pd.to_datetime(df["source_datetime"])
+        mask = (df["target_datetime"] >= start_date) & (
+            df["target_datetime"] <= end_date
+        )
+        return df[mask]
