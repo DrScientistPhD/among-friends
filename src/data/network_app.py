@@ -16,25 +16,33 @@ hv.extension('bokeh')
 ACCENT = "#BB2649"
 fake = Faker()
 
-def fake_nodes_edges_dataframe():
-    n = 100
-    data = {
-        "target_participant_id": [fake.random_int(min=1, max=10) for _ in range(n)],
-        "target_datetime": [fake.date_this_decade() for _ in range(n)],
-        "source_participant_id": [fake.random_int(min=1, max=10) for _ in range(n)],
-        "source_datetime": [fake.date_this_decade() for _ in range(n)],
-        "weight": [fake.random_number(digits=2) for _ in range(n)],
-        "interaction_category": [fake.random_element(elements=("response", "quotation", "emoji")) for _ in range(n)]
-    }
-    return pd.DataFrame(data)
 
-def filter_dataframe_by_dates(df, start_date, end_date):
-    df['target_datetime'] = pd.to_datetime(df['target_datetime'])
-    df['source_datetime'] = pd.to_datetime(df['source_datetime'])
-    mask = (df['target_datetime'] >= start_date) & (df['target_datetime'] <= end_date)
-    return df[mask]
+class DataProcessor:
+    def __init__(self):
+        self.fake = Faker()
 
-nodes_edges_df = fake_nodes_edges_dataframe()
+    def fake_nodes_edges_dataframe(self):
+        n = 100
+        data = {
+            "target_participant_id": [self.fake.random_int(min=1, max=10) for _ in range(n)],
+            "target_datetime": [self.fake.date_this_decade() for _ in range(n)],
+            "source_participant_id": [self.fake.random_int(min=1, max=10) for _ in range(n)],
+            "source_datetime": [self.fake.date_this_decade() for _ in range(n)],
+            "weight": [self.fake.random_number(digits=2) for _ in range(n)],
+            "interaction_category": [self.fake.random_element(elements=("response", "quotation", "emoji")) for _ in
+                                     range(n)]
+        }
+        return pd.DataFrame(data)
+
+    def filter_dataframe_by_dates(self, df, start_date, end_date):
+        df['target_datetime'] = pd.to_datetime(df['target_datetime'])
+        df['source_datetime'] = pd.to_datetime(df['source_datetime'])
+        mask = (df['target_datetime'] >= start_date) & (df['target_datetime'] <= end_date)
+        return df[mask]
+
+data_processor = DataProcessor()
+nodes_edges_df = data_processor.fake_nodes_edges_dataframe()
+
 min_date = nodes_edges_df["target_datetime"].apply(pd.Timestamp).min()
 max_date = nodes_edges_df["target_datetime"].apply(pd.Timestamp).max()
 
@@ -63,22 +71,27 @@ def update_end_date_label(date_range):
 
 end_date_label = pn.panel(update_end_date_label, width=400)
 
-@pn.depends(date_range_slider.param.value)
-def generate_filtered_graph(date_range):
-    start_date, end_date = date_range
-    nodes_edges_filtered_df = filter_dataframe_by_dates(nodes_edges_df, start_date, end_date)
-    G = SnaGraphBuilder.create_network_graph(nodes_edges_filtered_df)
-    participants = list(G.nodes)
-    pos = nx.spring_layout(G)
-    eigenvector_metrics = SnaMetricCalculator.generate_eigenvector_metrics(G)
-    return G, participants, pos, eigenvector_metrics
+class GraphGenerator:
+    def __init__(self, data_processor):
+        self.data_processor = data_processor
 
-G, participants, pos, _ = generate_filtered_graph((min_date, max_date))
+    def generate_filtered_graph(self, date_range):
+        start_date, end_date = date_range
+        nodes_edges_filtered_df = self.data_processor.filter_dataframe_by_dates(nodes_edges_df, start_date, end_date)
+        G = SnaGraphBuilder.create_network_graph(nodes_edges_filtered_df)
+        participants = list(G.nodes)
+        pos = nx.spring_layout(G)
+        eigenvector_metrics = SnaMetricCalculator.generate_eigenvector_metrics(G)
+        return G, participants, pos, eigenvector_metrics
+
+graph_generator = GraphGenerator(data_processor)
+G, participants, pos, _ = graph_generator.generate_filtered_graph((min_date, max_date))
+
 node_selector = pn.widgets.Select(options=sorted(participants), name='Group Chat Participant')
 
 @pn.depends(node_selector.param.value, date_range_slider.param.value)
 def update_eigenvector_ranking_label(selected_node, date_range):
-    _, _, _, eigenvector_metrics = generate_filtered_graph(date_range)
+    _, _, _, eigenvector_metrics = graph_generator.generate_filtered_graph(date_range)
     rankings = eigenvector_metrics["Eigenvector Rank"]
     if selected_node in rankings:
         rank = rankings[selected_node]
@@ -90,7 +103,7 @@ def update_eigenvector_ranking_label(selected_node, date_range):
 eigenvector_ranking_label = pn.panel(update_eigenvector_ranking_label, width=400)
 
 def closeness_ranking_for_node(date_range, node):
-    G, _, _, _ = generate_filtered_graph(date_range)
+    G, _, _, _ = graph_generator.generate_filtered_graph(date_range)
     closeness_metrics = SnaMetricCalculator.generate_closeness_metrics(G)
     rankings = closeness_metrics["Closeness Rank"].get(node, None)
     if rankings is None:
@@ -108,7 +121,7 @@ def closeness_ranking_for_node(date_range, node):
 
 @pn.depends(node_selector.param.value, date_range_slider.param.value)
 def get_graph(node_selector_value, date_range):
-    G, _, _, eigenvector_metrics = generate_filtered_graph(date_range)
+    G, _, _, eigenvector_metrics = graph_generator.generate_filtered_graph(date_range)
 
     # Normalize weights between 0 and 1
     weights = [d['weight'] for _, _, d in G.edges(data=True)]
@@ -149,7 +162,7 @@ def get_graph(node_selector_value, date_range):
             G.nodes[node]['size'] = size
 
     # Create a Bokeh HoverTool to customize hover information
-    hover = HoverTool(tooltips=[("Participant ID", "@index"), ("Influencer Ranking", "@influencer_ranking")])
+    hover = HoverTool(tooltips=[("Participant: ", "@index"), ("Influencer Ranking", "@influencer_ranking")])
 
     graph = hv.Graph.from_networkx(G, pos).opts(
         opts.Graph(width=700, height=600, tools=[hover, 'tap'], node_size='size',
@@ -172,10 +185,10 @@ class FoobarPage:
 
 class SocialNetworkPage:
     def __init__(self):
-        self.graph_pane = pn.panel(get_graph, width_policy='max', height=600, sizing_mode='stretch_width')
+        self.graph_pane = pn.panel(get_graph, width_policy='max', sizing_mode='stretch_width')
 
         common_table_options = dict(page_size=10, pagination='remote', selectable=True,
-                                    show_index=False, width_policy='max', sizing_mode='stretch_both')
+                                    show_index=False, width_policy='max')
 
         # Applying non-editable settings to the closeness_table_data
         editors = {
