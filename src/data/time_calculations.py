@@ -79,6 +79,7 @@ class TimeCalculations:
             raise ValueError("percentile must be between 0 and 1")
 
         try:
+            # TODO: I screwed up the naming here. half_life (t1/2) and decay_constant (lambda) should be reversed.
             half_life = df[column].quantile(percentile)
             decay_constant = np.log(2) / half_life
             return decay_constant
