@@ -27,7 +27,6 @@ class TimeCalculations:
             Exception: If there's an error during the time difference calculation.
             Warning: If there is a negative time difference
         """
-        # TODO: Need to figure out why some time_diff values are negative
 
         validate_dataframe(df)
         validate_data_types(timestamp1, str, "timestamp1")
@@ -79,7 +78,6 @@ class TimeCalculations:
             raise ValueError("percentile must be between 0 and 1")
 
         try:
-            # TODO: I screwed up the naming here. decay_constant (t1/2) and half_life (lambda) should be reversed.
             decay_constant = df[column].quantile(percentile)
             half_life = np.log(2) / decay_constant
             return half_life
