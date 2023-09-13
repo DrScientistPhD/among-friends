@@ -257,7 +257,7 @@ class SnaDataWrangler:
             processed_df = TimeCalculations.calculate_time_diff(
                 processed_df, time_col_1, time_col_2
             )
-            decay_constant = TimeCalculations.calculate_decay_constant(
+            decay_constant = TimeCalculations.calculate_half_life(
                 processed_df, "time_diff"
             )
             processed_df = TimeCalculations.calculate_weight(
