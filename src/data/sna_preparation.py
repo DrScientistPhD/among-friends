@@ -1,7 +1,7 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional, Union
 
 import pandas as pd
-from faker import Faker
 
 from src.data.data_validation import (
     validate_columns_in_dataframe,
@@ -302,6 +302,7 @@ class SnaDataWrangler:
 
         Raises:
             ValueError: If not all DataFrames have the same column names.
+            Exception: If an error occurs while concatenating the dataframes.
         """
         # Validate input data types
         validate_data_types(dfs, List, "dfs")
@@ -320,38 +321,44 @@ class SnaDataWrangler:
 
         except Exception as e:
             raise Exception(
-                f"An error occurred while processing concatenating dataframes data: {e}"
+                f"An error occurred while concatenating dataframes data: {e}"
             )
 
 
 class NodesEdgesDataProcessor:
-    def __init__(self):
-        self.fake = Faker()
-
-    def fake_nodes_edges_dataframe(self):
-        n = 100
-        data = {
-            "target_participant_id": [
-                self.fake.random_int(min=1, max=10) for _ in range(n)
-            ],
-            "target_datetime": [self.fake.date_this_decade() for _ in range(n)],
-            "source_participant_id": [
-                self.fake.random_int(min=1, max=10) for _ in range(n)
-            ],
-            "source_datetime": [self.fake.date_this_decade() for _ in range(n)],
-            "weight": [self.fake.random_number(digits=2) for _ in range(n)],
-            "interaction_category": [
-                self.fake.random_element(elements=("response", "quotation", "emoji"))
-                for _ in range(n)
-            ],
-        }
-        return pd.DataFrame(data)
-
     @staticmethod
-    def filter_dataframe_by_dates(df, start_date, end_date):
-        df["target_datetime"] = pd.to_datetime(df["target_datetime"])
-        df["source_datetime"] = pd.to_datetime(df["source_datetime"])
-        mask = (df["target_datetime"] >= start_date) & (
-            df["target_datetime"] <= end_date
-        )
-        return df[mask]
+    def filter_dataframe_by_dates(
+        df: pd.DataFrame,
+        start_date: Union[str, datetime],
+        end_date: Union[str, datetime],
+    ):
+        """
+        Filters a DataFrame based on date ranges.
+
+        Args:
+            df (pd.DataFrame): The input DataFrame containing date columns.
+            start_date (str, datetime): The start date to filter the dataframe by.
+            end_date (str, datetime): The end date to filter the dataframe by.
+
+        Returns:
+            pd.DataFrame: The filtered DataFrame containing only rows within the specified date range.
+
+        Raises:
+            TypeError: If input arguments are not the correct type.
+            Exception: If an error occurs while filtering the dataframe by date.
+        """
+        # Validate input data types
+        validate_dataframe(df)
+        validate_data_types(start_date, (str, datetime), "start_date")
+        validate_data_types(end_date, (str, datetime), "end_date")
+
+        # Attempt to filter the dataframe
+        try:
+            df["target_datetime"] = pd.to_datetime(df["target_datetime"])
+            df["source_datetime"] = pd.to_datetime(df["source_datetime"])
+            mask = (df["target_datetime"] >= start_date) & (
+                df["target_datetime"] <= end_date
+            )
+            return df[mask]
+        except Exception as e:
+            raise Exception(f"An error occurred while filtering the dataframe: {e}")
