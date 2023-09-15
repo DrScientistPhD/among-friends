@@ -32,3 +32,42 @@ class RecipientMapper:
 
         except Exception as e:
             raise Exception(f"Failed to create recipient ID to name mapping: {str(e)}")
+
+    @staticmethod
+    def update_node_participant_names(nodes_edges_df: pd.DataFrame, recipient_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Updates target_participant_id and source_participant_id in nodes_edges_df
+        with profile_joined_name from recipient_df based on recipient_id.
+
+        Args:
+            nodes_edges_df (pd.DataFrame): DataFrame with columns 'target_participant_id',
+                'source_participant_id', and other relevant columns.
+            recipient_df (pd.DataFrame): DataFrame with columns '_id', 'profile_joined_name',
+                and other relevant columns.
+
+        Returns:
+            pd.DataFrame: Updated nodes_edges_df with profile_joined_name.
+
+        Raises:
+            TypeError: If input data is not of expected type.
+            KeyError: If nodes_edges_df or recipient_df is missing required columns.
+            Exception: If there's an error during ID mapping.
+        """
+        # Validate input data
+        validate_dataframe(nodes_edges_df)
+        validate_dataframe(recipient_df)
+        validate_columns_in_dataframe(nodes_edges_df, ["target_participant_id", "target_participant_id"])
+        validate_columns_in_dataframe(recipient_df, ["_id", "profile_joined_name"])
+
+        try:
+            # Create the recipient_id to name mapping
+            recipient_id_to_name = RecipientMapper.create_recipient_id_to_name_mapping(recipient_df)
+
+            # Update target_participant_id and source_participant_id using the mapping
+            nodes_edges_df['target_participant_id'] = nodes_edges_df['target_participant_id'].map(recipient_id_to_name)
+            nodes_edges_df['source_participant_id'] = nodes_edges_df['source_participant_id'].map(recipient_id_to_name)
+
+            return nodes_edges_df
+
+        except Exception as e:
+            raise Exception(f"Failed to map participant IDs in nodes_edges_df: {str(e)}")
