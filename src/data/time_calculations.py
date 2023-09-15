@@ -65,6 +65,8 @@ class TimeCalculations:
             float: Half life calculated as log(2) divided by the specified percentile of the specified column.
 
         Raises:
+            TypeError: If input types are not correct.
+            KeyError: If columns are missing from input DataFrame.
             ValueError: If percentile is not between 0 and 1.
             Exception: If there's an error during the half life calculation.
         """
