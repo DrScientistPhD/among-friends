@@ -34,6 +34,7 @@ class SnaGraphBuilder:
             Exception: For other exceptions during processing.
         """
         # Validate input data types
+        # (Assuming the mentioned validation functions are available in the original context)
         validate_dataframe(df)
         validate_data_types(
             interaction_category, (str, type(None)), "interaction_category"
@@ -76,16 +77,20 @@ class SnaGraphBuilder:
             ).unique():
                 G.add_node(participant_id)
 
-            # Add edges with attributes
+            # Add edges with attributes, summing weights for repeated interactions
             for _, row in df.iterrows():
-                G.add_edge(
-                    row["source_participant_id"],
-                    row["target_participant_id"],
-                    weight=row["weight"],
-                    interaction_category=row["interaction_category"],
-                    source_datetime=row["source_datetime"],
-                    target_datetime=row["target_datetime"],
-                )
+                # If edge already exists, sum the weights
+                if G.has_edge(row["source_participant_id"], row["target_participant_id"]):
+                    G[row["source_participant_id"]][row["target_participant_id"]]['weight'] += row["weight"]
+                else:
+                    G.add_edge(
+                        row["source_participant_id"],
+                        row["target_participant_id"],
+                        weight=row["weight"],
+                        interaction_category=row["interaction_category"],
+                        source_datetime=row["source_datetime"],
+                        target_datetime=row["target_datetime"],
+                    )
 
             return G
 
@@ -137,51 +142,46 @@ class SnaMetricCalculator:
         }
 
     @staticmethod
-    def generate_closeness_metrics(graph: nx.DiGraph) -> Dict:
+    def generate_outward_response_metrics(graph: nx.DiGraph) -> Dict:
         """
-        Generate closeness rankings for each node.
+        Generate directed response rankings and distances for each node based on summed edge weights.
 
         Args:
             graph (nx.DiGraph): A directed graph.
 
         Returns:
-            A dictionary containing closeness rankings for each node.
+            A dictionary containing outward response rankings and outward response strength for each node.
 
         Raises:
             TypeError: If the input graph is not of type nx.DiGraph.
-            Warning: If not all nodes in the graph are reachable.
+            Exception: If directed response metrics cannot be generated.
         """
-
         # Validate input data types
-        if not isinstance(graph, nx.DiGraph):
-            raise TypeError(f"Expected input of type nx.DiGraph but got {type(graph)}.")
+        validate_data_types(graph, nx.DiGraph, "graph")
 
-        closeness_ranking = {}
-        closeness_distance = {}
+        # Attempt to generate outward response metrics
+        try:
+            # Convert the graph to a pandas DataFrame
+            df = nx.to_pandas_edgelist(graph)
 
-        for node in graph.nodes():
-            # Compute closeness rankings for each node
-            path_lengths = nx.single_source_dijkstra_path_length(graph, node)
+            # Group by source and target and aggregate the sum of weights
+            aggregated_weights = df.groupby(['source', 'target'])['weight'].sum().reset_index()
 
-            # Warning if not all nodes are reachable
-            if len(path_lengths) < len(graph.nodes()):
-                warnings.warn(f"Not all nodes are reachable from node {node}. Some distances might be missing.")
+            # Initialize the dictionaries
+            outward_response_strength = {}
+            outward_response_ranking = {}
 
-            # Filter out the current node itself from the closeness rankings
-            filtered_path_lengths = {k: v for k, v in path_lengths.items() if k != node}
+            # For each source node
+            for source, grouped in aggregated_weights.groupby('source'):
+                node_weights = dict(zip(grouped['target'], grouped['weight']))
+                sorted_nodes = sorted(node_weights.items(), key=lambda x: x[1], reverse=True)
 
-            # Sort the nodes in ascending order (i.e., closest nodes first)
-            sorted_nodes = sorted(filtered_path_lengths.items(), key=lambda x: x[1])
+                outward_response_strength[source] = dict(node_weights)
+                outward_response_ranking[source] = {node: rank for rank, (node, _) in enumerate(sorted_nodes, start=1)}
 
-            closeness_distance[node] = {
-                n: distance for n, distance in sorted_nodes
+            return {
+                "Outward Response Rank": outward_response_ranking,
+                "Outward Response Strength": outward_response_strength
             }
-
-            closeness_ranking[node] = {
-                n: rank for rank, (n, _) in enumerate(sorted_nodes, start=1)
-            }
-
-        return {
-            "Closeness Rank": closeness_ranking,
-            "Closeness Distance": closeness_distance
-        }
+        except Exception as e:
+            raise Exception(f"An error occurred while generating outward response metrics: {e}")

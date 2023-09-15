@@ -26,6 +26,7 @@ class DateTimeConverter:
             TypeError: If df is not a pandas DataFrame, or timestamp_column is not a string.
             KeyError: If the specified timestamp column does not exist in the DataFrame.
             ValueError: If an unexpected error occurs during datetime conversion.
+            Exception: If an error occurs converting unix to datetime.
         """
         # Validate input data
         validate_dataframe(df)
@@ -89,6 +90,8 @@ class MessageDataWrangler:
             raise ValueError(f"No records found for thread_id: {thread_id}")
 
         try:
+            df = df[df["thread_id"] == thread_id]
+
             renamed_df = df.rename(
                 columns={
                     "_id": "comment_id",
@@ -141,6 +144,7 @@ class MessageDataWrangler:
             TypeError: If input df is not a pandas DataFrame, or group_participants_n is not an int.
             KeyError: If the specified columns do not exist in the DataFrame.
             ValueError: If there's an error while concatenating comment threads.
+            Exception: If an error occurs concatenating comment threads.
         """
         # Validate input data types
         validate_dataframe(df_pd)

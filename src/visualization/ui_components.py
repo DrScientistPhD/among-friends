@@ -95,7 +95,7 @@ class NetworkUIComponents:
             if selected_node in rankings:
                 rank = rankings[selected_node]
                 total_participants = len(rankings)
-                return f"<font size='4'>Influencer Ranking: {rank}/{total_participants}</font>"
+                return f"<font size='4'>Influence Ranking: {rank}/{total_participants}</font>"
             else:
                 return "<font size='4'>Participant not found in the current date range</font>"
         except Exception as e:
@@ -126,6 +126,7 @@ class NetworkUIComponents:
                 )
                 rankings = eigenvector_metrics["Eigenvector Rank"]
                 G.nodes[node]["influencer_ranking"] = rankings.get(node, "N/A")
+                G.nodes[node]["name"] = node
         except Exception as e:
             raise Exception(f"Failed to set node colors and rankings: {str(e)}")
 
@@ -212,9 +213,6 @@ class NetworkUIComponents:
         Raises:
             Exception: If there's an error during the graph generation.
         """
-        if not node_selector_value or not date_range_value:
-            return pn.pane.HTML("<i>Waiting for data...</i>")
-
         try:
             G, _, _, eigenvector_metrics = self.graph_generator.generate_filtered_graph(
                 date_range_value
@@ -229,8 +227,8 @@ class NetworkUIComponents:
             # Create a Bokeh HoverTool to customize hover information
             hover = HoverTool(
                 tooltips=[
-                    ("Participant: ", "@index"),
-                    ("Influencer Ranking", "@influencer_ranking"),
+                    ("Participant: ", "@name"),
+                    ("Influence Ranking", "@influencer_ranking"),
                 ]
             )
             graph = hv.Graph.from_networkx(G, self.graph_generator.pos).opts(
@@ -257,37 +255,37 @@ class NetworkUIComponents:
         date_range: Tuple[Union[str, int, float], Union[str, int, float]],
         node: Any,
     ) -> pd.DataFrame:
-        """Calculates and returns the closeness ranking for a given node within a specified date range.
+        """Calculates and returns the outward response ranking for a given node within a specified date range.
 
         Args:
             date_range (Tuple[Union[str, int, float], Union[str, int, float]]): The date range for filtering.
-            node (Any): The node for which the closeness ranking is required.
+            node (Any): The node for which the outward response ranking is required.
 
         Returns:
-            pd.DataFrame: DataFrame containing closeness rankings.
+            pd.DataFrame: DataFrame containing outward response rankings.
 
         Raises:
-            Exception: If there's an error during the calculation of closeness rankings.
+            Exception: If there's an error during the calculation of outward response rankings.
         """
         try:
             G, _, _, _ = self.graph_generator.generate_filtered_graph(date_range)
-            closeness_metrics = SnaMetricCalculator.generate_closeness_metrics(G)
-            rankings = closeness_metrics["Closeness Rank"].get(node, None)
+            closeness_metrics = SnaMetricCalculator.generate_outward_response_metrics(G)
+            rankings = closeness_metrics["Outward Response Rank"].get(node, None)
             if rankings is None:
-                warnings.warn(f"No closeness rankings found for node: {node}")
-                return pd.DataFrame(columns=["Participant", "Closeness Ranking"])
+                warnings.warn(f"No outward response rankings found for node: {node}")
+                return pd.DataFrame(columns=["Participant", "Ranking"])
             data = [
-                {"Participant": participant, "Closeness Ranking": distance_rank}
+                {"Participant": participant, "Ranking": distance_rank}
                 for participant, distance_rank in rankings.items()
             ]
             df = pd.DataFrame(data)
-            if "Closeness Ranking" in df.columns:
-                df = df.sort_values(by="Closeness Ranking")[
-                    ["Participant", "Closeness Ranking"]
+            if "Ranking" in df.columns:
+                df = df.sort_values(by="Ranking")[
+                    ["Participant", "Ranking"]
                 ]
             else:
-                warnings.warn("No 'Closeness Ranking' column found in the DataFrame.")
+                warnings.warn("No 'Outward Response Ranking' column found in the DataFrame.")
                 df = pd.DataFrame
             return df
         except Exception as e:
-            raise Exception(f"Failed to get closeness rankings for node: {str(e)}")
+            raise Exception(f"Failed to get outward response rankings for node: {str(e)}")

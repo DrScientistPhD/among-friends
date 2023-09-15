@@ -4,6 +4,7 @@ import holoviews as hv
 import pandas as pd
 import panel as pn
 
+from src.data.csv_mover import CSVMover
 from src.data.sna_preparation import NodesEdgesDataProcessor
 from src.visualization.generative_text_page import GenerativeText
 from src.visualization.graph_generators import NetworkGraphGenerator
@@ -30,8 +31,10 @@ class AppManager:
         try:
             hv.extension("bokeh")
 
+            csv_mover = CSVMover()
+            self.nodes_edges_df = csv_mover.import_csv("processed", "nodes_edges_df")
+
             self.data_processor = NodesEdgesDataProcessor()
-            self.nodes_edges_df = self.data_processor.fake_nodes_edges_dataframe()
             self.min_date = self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).min()
             self.max_date = self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).max()
 
@@ -149,8 +152,8 @@ class AppManager:
         try:
             buttons: List[Tuple[str, callable]] = [
                 ("Network Analysis", self.load_network_analysis_page),
-                ("Statistics", self.load_statistics_page),
-                ("Generative Text", self.load_gen_text_page),
+                # ("Statistics", self.load_statistics_page),
+                # ("Generative Text", self.load_gen_text_page),
             ]
 
             for btn_name, btn_event in buttons:

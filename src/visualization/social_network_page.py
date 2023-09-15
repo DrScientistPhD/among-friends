@@ -1,5 +1,7 @@
 import panel as pn
 
+pn.extension(loading_spinner='dots')
+
 
 class SocialNetworkPage:
     def __init__(
@@ -45,11 +47,14 @@ class SocialNetworkPage:
             Exception: If there's an error while generating the graph pane.
         """
         try:
-            return pn.pane.HoloViews(
+            graph_pane = pn.pane.HoloViews(
                 self.ui_components.get_network_graph(
                     self.node_selector.value, self.date_range_slider.value
                 )
             )
+            graph_pane.loading = True
+            graph_pane.loading = False
+            return graph_pane
         except Exception as e:
             raise Exception(f"Error encountered while initializing graph pane: {e}")
 
@@ -69,11 +74,10 @@ class SocialNetworkPage:
          """
         try:
             common_table_options = dict(
-                page_size=10,
+                page_size=20,
                 pagination="remote",
                 selectable=True,
                 show_index=False,
-                width_policy="max",
             )
             editors = {
                 "Participant": {"type": "editable", "value": False},
@@ -121,16 +125,16 @@ class SocialNetworkPage:
             Exception: If there's an error while generating the content layout.
         """
         try:
-            closeness_table_title = pn.pane.Markdown(
-                "### Co-Participant Closeness Rankings"
+            outward_response_table_title = pn.pane.Markdown(
+                "### Outward Response Rankings"
             )
-            closeness_table_layout = pn.Column(
-                closeness_table_title, self.closeness_table, sizing_mode="stretch_width"
+            outward_response_table_layout = pn.Column(
+                outward_response_table_title, self.closeness_table, sizing_mode="stretch_width"
             )
             return pn.Row(
                 self.sidebar,
                 self.graph_pane,
-                closeness_table_layout,
+                outward_response_table_layout,
                 sizing_mode="stretch_width",
             )
         except Exception as e:
@@ -161,6 +165,7 @@ class SocialNetworkPage:
         Raises:
             Exception: If there's an error while updating the graph pane.
         """
+        self.graph_pane.loading = True
         try:
             new_graph = self.ui_components.get_network_graph(
                 self.node_selector.value, self.date_range_slider.value
@@ -168,6 +173,8 @@ class SocialNetworkPage:
             self.graph_pane.object = new_graph
         except Exception as e:
             raise Exception(f"Error encountered while updating graph pane: {e}")
+        finally:
+            self.graph_pane.loading = False
 
     def update_closeness_table(self, event):
         """

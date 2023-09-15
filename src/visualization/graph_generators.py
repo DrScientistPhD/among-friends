@@ -31,7 +31,7 @@ class NetworkGraphGenerator:
         try:
             if not pos:
                 G = SnaGraphBuilder.create_network_graph(self.nodes_edges_df)
-                self.pos = nx.spring_layout(G)
+                self.pos = nx.kamada_kawai_layout(G)
             else:
                 self.pos = pos
         except nx.NetworkXError as e:
