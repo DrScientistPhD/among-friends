@@ -56,7 +56,7 @@ class RecipientMapper:
         # Validate input data
         validate_dataframe(nodes_edges_df)
         validate_dataframe(recipient_df)
-        validate_columns_in_dataframe(nodes_edges_df, ["target_participant_id", "target_participant_id"])
+        validate_columns_in_dataframe(nodes_edges_df, ["target_participant_id", "source_participant_id"])
         validate_columns_in_dataframe(recipient_df, ["_id", "profile_joined_name"])
 
         try:
@@ -64,8 +64,10 @@ class RecipientMapper:
             recipient_id_to_name = RecipientMapper.create_recipient_id_to_name_mapping(recipient_df)
 
             # Update target_participant_id and source_participant_id using the mapping
-            nodes_edges_df['target_participant_id'] = nodes_edges_df['target_participant_id'].map(recipient_id_to_name)
-            nodes_edges_df['source_participant_id'] = nodes_edges_df['source_participant_id'].map(recipient_id_to_name)
+            nodes_edges_df['target_participant_id'] = nodes_edges_df['target_participant_id'].map(
+                lambda x: recipient_id_to_name.get(x, x))
+            nodes_edges_df['source_participant_id'] = nodes_edges_df['source_participant_id'].map(
+                lambda x: recipient_id_to_name.get(x, x))
 
             return nodes_edges_df
 
