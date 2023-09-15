@@ -219,5 +219,6 @@ class AppManager:
         except Exception as e:
             raise Exception(f"Error serving the tempalte: {e}")
 
-app_manager = AppManager()
-app_manager.serve()
+if __name__ == "__main__":
+    app_manager = AppManager()
+    app_manager.serve()
