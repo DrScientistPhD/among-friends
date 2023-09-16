@@ -131,15 +131,15 @@ class SocialNetworkPage:
         
         Use the *Group Chat Date Range* slider to set the time period, and the *Group Chat Participant* dropdown menu to
          select the participant of interest. 
+                  
+         <br> **Influence Ranking** measures the selected participant's influence in the group chat for that time 
+         period. It is derived from the eigenvector centrality score of text responses, quotation responses, and emoji 
+         reactions to other text messages. Interactions are weighted based on the time difference between the source 
+         text message and the response. 
          
-         <br> **Influence Ranking** is a rank measure of the selected 
-         participant's influence in the group chat for that time period, ultimately derived from the eigenvector 
-         centrality score of text responses, quotation responses, and emoji reactions to other text messages. 
-         Interactions are weighted according to the time difference between the source text message and the response. 
-         
-         <br>**Outward Response Rankings** is a measure of how active each participant is responding to other 
-         participants and how strong those responses are based on frequency and timing. A better ranking (with 1 being 
-         the best) indicates the selected participant is responding more strongly to the ranked participant.  
+         <br>**Outward Response Rankings** measure how active each participant is in responding to other participants 
+         and the strength of those responses, considering both frequency and timing. A lower ranking (with 1 being the 
+         best) indicates that the selected participant is responding more strongly to the ranked participant. 
         </div>
         """
         return pn.pane.Markdown(explanatory_text)
