@@ -75,7 +75,7 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
+# exclude prod data from source control by default
 /data/production_data/
 
 # Mac OS-specific storage files
