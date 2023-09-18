@@ -52,6 +52,7 @@ class TestCSVMover:
     def test_export_csv_success(self, iteration, fake_nodes_edges_dataframe, mocker):
         """Test to check if the function exports a DataFrame to a CSV file successfully."""
         df = fake_nodes_edges_dataframe
+        parent_directory = "parent_dir"
         file_name = "test_file"
 
         # Mocking validate_data_types to bypass actual validation
@@ -61,7 +62,7 @@ class TestCSVMover:
         mocker.patch.object(pd.DataFrame, "to_csv", return_value=None)
 
         # Test the export_csv method
-        self.csv_mover.export_csv(df, file_name)
+        self.csv_mover.export_csv(df, parent_directory, file_name)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_export_csv_general_exception(
@@ -69,6 +70,7 @@ class TestCSVMover:
     ):
         """Test to check if the function raises a general Exception during the export process."""
         df = fake_nodes_edges_dataframe
+        parent_directory = "parent_dir"
         file_name = "test_file"
 
         # Mocking DataFrame's to_csv method to raise an exception
@@ -79,4 +81,4 @@ class TestCSVMover:
         )
 
         with pytest.raises(Exception, match="Failed to export DataFrame to CSV file"):
-            self.csv_mover.export_csv(df, file_name)
+            self.csv_mover.export_csv(df, parent_directory, file_name)

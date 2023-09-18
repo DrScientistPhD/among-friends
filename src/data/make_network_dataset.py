@@ -2,12 +2,14 @@
 import logging
 from typing import Tuple
 
+import click
+import pandas as pd
+
 # Local project imports
 from src.data.csv_mover import CSVMover
 from src.data.data_wrangling import EmojiDataWrangler, MessageDataWrangler
-from src.data.sna_preparation import SnaDataWrangler
 from src.data.recipient_mapper import RecipientMapper
-import pandas as pd
+from src.data.sna_preparation import SnaDataWrangler
 
 # Instantiate logger
 logger = logging.getLogger(__name__)
@@ -21,18 +23,56 @@ def configure_logging() -> None:
     logging.basicConfig(level=logging.INFO, format=log_fmt)
 
 
-def import_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def import_data(data_source: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Imports necessary files and returns the dataframes.
 
+    Args:
+        data_source (str): Either 'production' or 'mocked' to specify the data source.
+
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple of dataframes for messages, emojis, and recipients.
+
+    Raises:
+        ValueError: If a string other than "production" or "mocked" is provided.
     """
-    logger.info("Importing necessary files")
-    message = CSVMover.import_csv("raw", "message")
-    emoji = CSVMover.import_csv("raw", "reaction")
-    recipient = CSVMover.import_csv("raw", "recipient")
+    logger.info(f"Importing necessary files from {data_source}_data")
+
+    if data_source == "production":
+        data_dir = "data/production_data/raw"
+    elif data_source == "mocked":
+        data_dir = "data/mocked_data/raw"
+    else:
+        raise ValueError("Invalid data_source. Use 'production' or 'mocked'.")
+
+    message = CSVMover.import_csv(data_dir, "message")
+    emoji = CSVMover.import_csv(data_dir, "reaction")
+    recipient = CSVMover.import_csv(data_dir, "recipient")
+
     return message, emoji, recipient
+
+
+def export_nodes_edges_data(data_destination: str, df: pd.DataFrame) -> None:
+    """
+    Export the nodes_edges_df to either the prod or mock directory.
+
+    Args:
+        data_destination (str): Either 'production' or 'mocked' to specify the data source.
+        df (pd.DataFrame): The processed nodes-edges dataframe to save.
+
+    Raises:
+        ValueError: If a string other than "production" or "mocked" is provided.
+    """
+    logger.info(f"exporting nodes_edges_df to {data_destination} data directory")
+
+    if data_destination == "production":
+        data_dir = "production_data/processed"
+    elif data_destination == "mocked":
+        data_dir = "mocked_data/processed"
+    else:
+        raise ValueError("Invalid selection. Use 'production' or 'mocked'.")
+
+    CSVMover.export_csv(df, data_dir, "nodes_edges_df")
 
 
 def generate_edge_weights(
@@ -49,12 +89,20 @@ def generate_edge_weights(
         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Tuple of dataframes for response, emoji, and quotation weights.
     """
     logger.info("Generating response, emoji, and quotation edges")
-    message_slim = MessageDataWrangler.filter_and_rename_messages_df(message_df, thread_id=2)
+    message_slim = MessageDataWrangler.filter_and_rename_messages_df(
+        message_df, thread_id=2
+    )
     emoji_slim = EmojiDataWrangler.filter_and_rename_emojis_df(emoji_df)
 
-    response_weight_slim = SnaDataWrangler.process_data_for_sna("response", 1.0, message_slim)
-    emoji_weight_slim = SnaDataWrangler.process_data_for_sna("emoji", 1.5, message_slim, emoji_slim)
-    quotation_weight_slim = SnaDataWrangler.process_data_for_sna("quotation", 2.0, message_slim)
+    response_weight_slim = SnaDataWrangler.process_data_for_sna(
+        "response", 1.0, message_slim
+    )
+    emoji_weight_slim = SnaDataWrangler.process_data_for_sna(
+        "emoji", 1.5, message_slim, emoji_slim
+    )
+    quotation_weight_slim = SnaDataWrangler.process_data_for_sna(
+        "quotation", 2.0, message_slim
+    )
 
     return response_weight_slim, emoji_weight_slim, quotation_weight_slim
 
@@ -74,27 +122,39 @@ def create_final_dataframe(
         pd.DataFrame: Concatenated dataframe.
     """
     logger.info("Generating nodes-edges raw dataframe")
-    nodes_edges_raw_id = SnaDataWrangler.concatenate_dataframes_vertically([response, emoji, quotation])
+    nodes_edges_raw_id = SnaDataWrangler.concatenate_dataframes_vertically(
+        [response, emoji, quotation]
+    )
     return nodes_edges_raw_id
 
 
-def main() -> None:
-    """
-    Runs data processing scripts to turn raw data from (../raw) into
-    cleaned data ready for network analysis (saved in ../processed).
+@click.command()
+@click.argument("data_source", type=click.Choice(["production", "mocked"]))
+def main(data_source) -> None:
+    """Runs data processing scripts to turn data from either production_data
+    or mocked_data into cleaned data ready to be analyzed (saved in the
+    specified output file).
     """
     logger.info("Making final network data set from raw data")
 
-    message_df, emoji_df, recipient_df = import_data()
-    response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df = generate_edge_weights(message_df, emoji_df)
+    message_df, emoji_df, recipient_df = import_data(data_source)
+    (
+        response_weight_slim_df,
+        emoji_weight_slim_df,
+        quotation_weight_slim_df,
+    ) = generate_edge_weights(message_df, emoji_df)
 
-    nodes_edges_raw_id_df = create_final_dataframe(response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df)
+    nodes_edges_raw_id_df = create_final_dataframe(
+        response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df
+    )
 
     logger.info("Mapping names to participant IDs")
-    nodes_edges_df = RecipientMapper.update_node_participant_names(nodes_edges_raw_id_df, recipient_df)
+    nodes_edges_df = RecipientMapper.update_node_participant_names(
+        nodes_edges_raw_id_df, recipient_df
+    )
 
     logger.info("Saving final nodes-edges dataframe")
-    CSVMover.export_csv(nodes_edges_df, "nodes_edges_df")
+    export_nodes_edges_data(data_source, nodes_edges_df)
 
 
 if __name__ == "__main__":
