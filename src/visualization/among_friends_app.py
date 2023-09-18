@@ -1,5 +1,5 @@
 from typing import Any, List, Tuple
-
+import click
 import holoviews as hv
 import pandas as pd
 import panel as pn
@@ -21,7 +21,7 @@ class AppManager:
     Main manager for the Among Friends application.
     Handles UI components initialization and page navigation.
     """
-    def __init__(self) -> None:
+    def __init__(self, data_source: str = "production_data") -> None:
         """
         Initialize the AppManager and related UI components.
 
@@ -32,7 +32,7 @@ class AppManager:
             hv.extension("bokeh")
 
             csv_mover = CSVMover()
-            self.nodes_edges_df = csv_mover.import_csv("processed", "nodes_edges_df")
+            self.nodes_edges_df = csv_mover.import_csv(f"data/{data_source}/processed", "nodes_edges_df")
 
             self.data_processor = NodesEdgesDataProcessor()
             self.min_date = self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).min()
@@ -219,6 +219,14 @@ class AppManager:
         except Exception as e:
             raise Exception(f"Error serving the tempalte: {e}")
 
-if __name__ == "__main__":
-    app_manager = AppManager()
+
+@click.command()
+@click.option('--data-source', default="production_data", type=click.Choice(['production_data', 'mocked_data']),
+              help='Data source directory: production_data or mocked_data.')
+def main(data_source: str):
+    app_manager = AppManager(data_source)
     app_manager.serve()
+
+
+if __name__ == "__main__":
+    main()
