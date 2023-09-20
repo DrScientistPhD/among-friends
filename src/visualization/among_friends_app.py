@@ -1,4 +1,6 @@
+import logging
 from typing import Any, List, Tuple
+
 import click
 import holoviews as hv
 import pandas as pd
@@ -15,13 +17,19 @@ from src.visualization.ui_components import NetworkUIComponents
 # Constants and Colors
 ACCENT = "#BB2649"
 
+# Instantiate logger
+logger = logging.getLogger(__name__)
+log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=logging.INFO, format=log_fmt)
+
 
 class AppManager:
     """
     Main manager for the Among Friends application.
     Handles UI components initialization and page navigation.
     """
-    def __init__(self, data_source: str = "production_data") -> None:
+
+    def __init__(self, data_source: str = "production") -> None:
         """
         Initialize the AppManager and related UI components.
 
@@ -32,11 +40,17 @@ class AppManager:
             hv.extension("bokeh")
 
             csv_mover = CSVMover()
-            self.nodes_edges_df = csv_mover.import_csv(f"data/{data_source}/processed", "nodes_edges_df")
+            self.nodes_edges_df = csv_mover.import_csv(
+                f"data/{data_source}" + "_data/processed", "nodes_edges_df"
+            )
 
             self.data_processor = NodesEdgesDataProcessor()
-            self.min_date = self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).min()
-            self.max_date = self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).max()
+            self.min_date = (
+                self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).min()
+            )
+            self.max_date = (
+                self.nodes_edges_df["target_datetime"].apply(pd.Timestamp).max()
+            )
 
             self.init_network_ui_components()
 
@@ -117,7 +131,9 @@ class AppManager:
                     )[1]
                 )
             )
-            return pn.widgets.Select(options=participants, name="Group Chat Participant")
+            return pn.widgets.Select(
+                options=participants, name="Group Chat Participant"
+            )
         except Exception as e:
             raise Exception(f"Error creating network node selector: {e}")
 
@@ -130,7 +146,10 @@ class AppManager:
         """
         try:
             template = pn.template.FastListTemplate(
-                title="Among Friends", accent_base_color=ACCENT, header_background=ACCENT, theme_toggle=False
+                title="Among Friends",
+                accent_base_color=ACCENT,
+                header_background=ACCENT,
+                theme_toggle=False,
             )
 
             # Setup buttons and event handlers
@@ -221,8 +240,13 @@ class AppManager:
 
 
 @click.command()
-@click.option('--data-source', default="production_data", type=click.Choice(['production_data', 'mocked_data']),
-              help='Data source directory: production_data or mocked_data.')
+@click.option(
+    "--data-source",
+    type=click.Choice(["production", "mocked"]),
+    default="mocked",
+    show_default=True,
+    help="Specify the data source to use. Choices are 'production' or 'mocked'.",
+)
 def main(data_source: str):
     app_manager = AppManager(data_source)
     app_manager.serve()
