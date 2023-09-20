@@ -5,7 +5,7 @@ pn.extension(loading_spinner="dots")
 
 class SocialNetworkPage:
     def __init__(
-        self, date_range_slider, node_selector, min_date, max_date, ui_components
+            self, date_range_slider, node_selector, min_date, max_date, ui_components
     ):
         """
         Initializes the SocialNetworkPage class.
@@ -128,18 +128,23 @@ class SocialNetworkPage:
         explanatory_text = """\
         ### Understanding the Network Analysis Page
         <div style="font-size: 16px;">
-        
-        Use the *Group Chat Date Range* slider to set the time period, and the *Group Chat Participant* dropdown menu to
-         select the participant of interest. 
-                  
-         <br> **Influence Ranking** measures the selected participant's influence in the group chat for that time 
-         period. It is derived from the eigenvector centrality score of text responses, quotation responses, and emoji 
-         reactions to other text messages. Interactions are weighted based on the time difference between the source 
-         text message and the response. 
-         
-         <br>**Outward Response Rankings** measure how active each participant is in responding to other participants 
-         and the strength of those responses, considering both frequency and timing. A lower ranking (with 1 being the 
-         best) indicates that the selected participant is responding more strongly to the ranked participant. 
+
+        Use the *Group Chat Date Range* slider to set the desired time period. Select a participant using the 
+        *Group Chat Participant* dropdown menu.
+
+        <br> **Influence Ranking** gauges a participant's impact within the group chat during the selected time 
+        period. An Influence Ranking of "1" signifies that the participant provokes the most significant reactions 
+        in the chat. Lower rankings represent decreasing influence levels. This ranking arises from the eigenvector 
+        centrality score of text responses, quotation responses, and emoji reactions to messages. Interactions are 
+        assessed based on the time gap between the original message and its response. A larger circle signifies a 
+        participant with higher influence, with the top-ranked participant having the biggest circle. The thickness 
+        of the connections (edges) between participants correlates with the relationship strength between them; a 
+        thicker line indicates a more robust relationship.
+
+        <br>**Outward Response Rankings** evaluate the activity level of each participant in responding to others 
+        and the intensity of those responses. This takes into account both the frequency and timing of responses. A 
+        lower ranking (with 1 being the highest) signifies that the selected participant has a more pronounced 
+        response to the ranked participant.
         </div>
         """
         return pn.pane.Markdown(explanatory_text)

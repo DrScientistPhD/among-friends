@@ -123,7 +123,7 @@ class AppManager:
 
     def setup_template(self) -> pn.template.FastListTemplate:
         """
-        Setup the main template for the application.
+        Set up the main template for the application.
 
         Returns:
             pn.template.FastListTemplate: Configured template.
@@ -217,7 +217,7 @@ class AppManager:
         try:
             pn.serve(self.template)
         except Exception as e:
-            raise Exception(f"Error serving the tempalte: {e}")
+            raise Exception(f"Error serving the template: {e}")
 
 
 @click.command()
