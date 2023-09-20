@@ -13,14 +13,8 @@ from src.data.sna_preparation import SnaDataWrangler
 
 # Instantiate logger
 logger = logging.getLogger(__name__)
-
-
-def configure_logging() -> None:
-    """
-    Configures the logging format and level for the script.
-    """
-    log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
+log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+logging.basicConfig(level=logging.INFO, format=log_fmt)
 
 
 def import_data(data_source: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -76,7 +70,7 @@ def export_nodes_edges_data(data_destination: str, df: pd.DataFrame) -> None:
 
 
 def generate_edge_weights(
-    message_df: pd.DataFrame, emoji_df: pd.DataFrame
+    message_df: pd.DataFrame, emoji_df: pd.DataFrame, thread_id: int
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Generates weight dataframes for response, emoji, and quotation edges.
@@ -84,14 +78,16 @@ def generate_edge_weights(
     Args:
         message_df (pd.DataFrame): DataFrame containing message data.
         emoji_df (pd.DataFrame): DataFrame containing emoji data.
+        thread_id (int): Thread ID to filter by.
 
     Returns:
         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Tuple of dataframes for response, emoji, and quotation weights.
     """
     logger.info("Generating response, emoji, and quotation edges")
     message_slim = MessageDataWrangler.filter_and_rename_messages_df(
-        message_df, thread_id=2
+        message_df, thread_id=thread_id
     )
+
     emoji_slim = EmojiDataWrangler.filter_and_rename_emojis_df(emoji_df)
 
     response_weight_slim = SnaDataWrangler.process_data_for_sna(
@@ -129,34 +125,54 @@ def create_final_dataframe(
 
 
 @click.command()
-@click.argument("data_source", type=click.Choice(["production", "mocked"]))
-def main(data_source) -> None:
+@click.option(
+    "--data-source",
+    type=click.Choice(["production", "mocked"]),
+    default="mocked",
+    show_default=True,
+    help="Specify the data source to use. Choices are 'production' or 'mocked'.",
+)
+@click.option(
+    "--thread-id",
+    type=int,
+    default=2,
+    show_default=True,
+    help="Specify the thread ID to filter by.",
+)
+def main(data_source, thread_id) -> None:
     """Runs data processing scripts to turn data from either production_data
     or mocked_data into cleaned data ready to be analyzed (saved in the
     specified output file).
     """
-    logger.info("Making final network data set from raw data")
+    try:
+        logger.info("Making final network data set from raw data")
 
-    message_df, emoji_df, recipient_df = import_data(data_source)
-    (
-        response_weight_slim_df,
-        emoji_weight_slim_df,
-        quotation_weight_slim_df,
-    ) = generate_edge_weights(message_df, emoji_df)
+        message_df, emoji_df, recipient_df = import_data(data_source)
+        (
+            response_weight_slim_df,
+            emoji_weight_slim_df,
+            quotation_weight_slim_df,
+        ) = generate_edge_weights(message_df, emoji_df, thread_id)
 
-    nodes_edges_raw_id_df = create_final_dataframe(
-        response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df
-    )
+        nodes_edges_raw_id_df = create_final_dataframe(
+            response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df
+        )
 
-    logger.info("Mapping names to participant IDs")
-    nodes_edges_df = RecipientMapper.update_node_participant_names(
-        nodes_edges_raw_id_df, recipient_df
-    )
+        logger.info("Mapping names to participant IDs")
+        nodes_edges_df = RecipientMapper.update_node_participant_names(
+            nodes_edges_raw_id_df, recipient_df
+        )
 
-    logger.info("Saving final nodes-edges dataframe")
-    export_nodes_edges_data(data_source, nodes_edges_df)
+        logger.info("Saving final nodes-edges dataframe")
+        export_nodes_edges_data(data_source, nodes_edges_df)
+
+    except ValueError as e:
+        # Print a user-friendly message
+        print(f"An error occurred: {str(e)}")
+
+        # Optionally, log the detailed error for debugging
+        logger.error(f"Error encountered: {str(e)}")
 
 
 if __name__ == "__main__":
-    configure_logging()
     main()

@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+
+from src.visualization import among_friends_app
+
+among_friends_app.main()

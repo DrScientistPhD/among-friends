@@ -44,9 +44,19 @@ To set up the environment for this project, follow these steps:
 
 Before running the app, ensure you've prepared your group text chat data as follows:
 
-### Preparing the Signal Text Message Data
+### Utilizing Mocked Data
 
-among-friends relies on text message data from the Signal messaging app. Obtaining and processing this data for the
+This repository contains crucial CSV files that empower users to run the "Among Friends" dashboard on their local
+systems without the need to extract actual text message data from the Signal App. It's essential to understand that 
+this data includes fully anonymized names and uses a limited, random assortment of sentences from each participant's 
+text messages. While these files do not encompass all the fields or values found in valid Signal text message data, they
+contain sufficient information to enable the dashboard's functionality.
+<BR>Therefore, if you opt for the mocked data, there is no need for any additional data preparation. You can proceed
+directly to the next section on launching the "Among Friends" dashboard.
+
+### Utilizing the Signal Text Message Data
+
+among-friends relies on text message data from the Signal messaging app. Obtaining and processing this data for the  
 dashboard requires several steps.
 
 1. Follow the instructions under "How do I enable a backup?"
@@ -65,35 +75,82 @@ dashboard requires several steps.
 4. Move the files to among-friends/data/raw.
 
 ### Generating Social Network Analysis Data for the Dashboard
-
-With the required files saved to among-friends/data/raw, generate the dataset for the Network Analysis page of the
-dashboard with:
-
-   ```bash
-   python -m src.data.make_network_dataset
-   ```
-
-This command produces a CSV file, **nodes_edges_df.csv**, in the among-friends/data/processed directory for the
-dashboard.
-
-## Usage
-
-To run the Panel/HoloViews app, execute the following command:
+With the required files saved to among-friends/data/raw, navigate to the repository's home directory in your 
+terminal and run:
 
    ```bash
-   python -m src.visualization.among_friends_app
+   chmod +x run_make_network_dataset
    ```
+Then generate the dataset for the Network Analysis page of the dashboard with:
+
+   ```bash
+   ./run_make_network_dataset
+   ```
+
+The script supports several flags:
+
+- `--data-source`: Specify the data source to use. Choices are 'production' or 'mocked'. Default is 'mocked'.
+  
+  Example:
+  ```bash
+  ./run_make_network_dataset --data-source mocked
+  ```
+
+- `--thread-id`: Specify the thread ID to filter by. Default is 2.
+  
+  Example:
+  ```bash
+  ./run_make_network_dataset --thread-id 2
+  ```
+
+For help and additional options:
+
+```bash
+./run_make_network_dataset --help
+```
+The thread_id refers to the exact group chat conversation that the network data should be constructed from, and will 
+vary depending on the data contents the use extracts from Signal. The resulting file, **nodes_edges_df.csv**, is 
+saved to the **among-friends/data/{mocked_data or production-data}/processed** directory for the dashboard itself.
+
+
+
+## Starting the Dashboard
+
+Navigate to the repository's home directory in your terminal and run:
+
+   ```bash
+   chmod +x run_among_friends_app
+   ```
+Then start the dashboard with:
+
+   ```bash
+   ./run_among_friends_app
+   ```
+
+The script supports one flag:
+
+- `--data-source`: Specify the data source to use. Choices are 'production' or 'mocked'. Default is 'mocked'.
+  
+  Example:
+  ```bash
+  ./run_among_friends_app --data-source mocked
+
+For help and additional options:
+
+```bash
+./run_make_network_dataset --help
+```
 
 Visit [http://localhost:5006](http://localhost:5006) in your web browser to interact with the app.
 
-## Features
+## Dashboard Features
 
 - Visualize relationships and connections within the chat.
 - Interactivity allowing users to zoom in on specific participants or timeframes.
 - Understand analysis showcasing key influencers (Influence Ranking) and the strength of interactions between
   participants (Outward Response Rankings).
 
-## Constructing the Network Graph
+## How the Network Graph is Constructed
 
 ### Overview
 
@@ -129,8 +186,9 @@ an emoji as a text response.
 
 Different interaction types have varying weights. While these weights might appear arbitrary, they're chosen based on
 the degree of intentionality behind each interaction type. Text Responses have a weight of 1.0, Quotation Responses 2.0,
-and Emoji Reactions 1.5. Quotation Responses weigh more than Emoji Reactions because they demand more effort, signaling
-a deeper level of engagement.
+and Emoji Reactions 1.5. Both Quotation Responses and Emoji reactions are weighted more heavility than Text 
+Responses as the former have more intention and directionality to them. Quotation Responses weigh more than Emoji 
+Reactions because the former demands more effort, signaling a deeper level of engagement.
 
 ### Interaction Time Penalty
 
