@@ -167,10 +167,6 @@ def main(data_source, thread_id) -> None:
         export_nodes_edges_data(data_source, nodes_edges_df)
 
     except ValueError as e:
-        # Print a user-friendly message
-        print(f"An error occurred: {str(e)}")
-
-        # Optionally, log the detailed error for debugging
         logger.error(f"Error encountered: {str(e)}")
 
 

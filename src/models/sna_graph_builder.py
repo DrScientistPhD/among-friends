@@ -80,8 +80,12 @@ class SnaGraphBuilder:
             # Add edges with attributes, summing weights for repeated interactions
             for _, row in df.iterrows():
                 # If edge already exists, sum the weights
-                if G.has_edge(row["source_participant_id"], row["target_participant_id"]):
-                    G[row["source_participant_id"]][row["target_participant_id"]]['weight'] += row["weight"]
+                if G.has_edge(
+                    row["source_participant_id"], row["target_participant_id"]
+                ):
+                    G[row["source_participant_id"]][row["target_participant_id"]][
+                        "weight"
+                    ] += row["weight"]
                 else:
                     G.add_edge(
                         row["source_participant_id"],
@@ -138,7 +142,7 @@ class SnaMetricCalculator:
 
         return {
             "Eigenvector Rank": eigenvector_ranking,
-            "Eigenvector Score": eigenvector_centrality
+            "Eigenvector Score": eigenvector_centrality,
         }
 
     @staticmethod
@@ -159,29 +163,39 @@ class SnaMetricCalculator:
         # Validate input data types
         validate_data_types(graph, nx.DiGraph, "graph")
 
-        # Attempt to generate outward response metrics
         try:
-            # Convert the graph to a pandas DataFrame
+            # Convert the graph into a DataFrame representation
             df = nx.to_pandas_edgelist(graph)
 
-            # Group by source and target and aggregate the sum of weights
-            aggregated_weights = df.groupby(['source', 'target'])['weight'].sum().reset_index()
+            # Sum the weights for each directed edge and reset the index
+            aggregated_weights = (
+                df.groupby(["source", "target"])["weight"].sum().reset_index()
+            )
 
-            # Initialize the dictionaries
             outward_response_strength = {}
             outward_response_ranking = {}
 
-            # For each source node
-            for source, grouped in aggregated_weights.groupby('source'):
-                node_weights = dict(zip(grouped['target'], grouped['weight']))
-                sorted_nodes = sorted(node_weights.items(), key=lambda x: x[1], reverse=True)
+            # Iterate over each unique source node in the aggregated weights
+            for source, grouped in aggregated_weights.groupby("source"):
+                # Create a dictionary of target nodes and their weights for the current source node
+                node_weights = dict(zip(grouped["target"], grouped["weight"]))
+                # Sort the target nodes by their weights in descending order
+                sorted_nodes = sorted(
+                    node_weights.items(), key=lambda x: x[1], reverse=True
+                )
 
+                # Store the sorted target nodes and their weights for the current source node
                 outward_response_strength[source] = dict(node_weights)
-                outward_response_ranking[source] = {node: rank for rank, (node, _) in enumerate(sorted_nodes, start=1)}
+                # Store the rank of each target node based on its weight for the current source node
+                outward_response_ranking[source] = {
+                    node: rank for rank, (node, _) in enumerate(sorted_nodes, start=1)
+                }
 
             return {
                 "Outward Response Rank": outward_response_ranking,
-                "Outward Response Strength": outward_response_strength
+                "Outward Response Strength": outward_response_strength,
             }
         except Exception as e:
-            raise Exception(f"An error occurred while generating outward response metrics: {e}")
+            raise Exception(
+                f"An error occurred while generating outward response metrics: {e}"
+            )

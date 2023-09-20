@@ -280,12 +280,14 @@ class NetworkUIComponents:
             ]
             df = pd.DataFrame(data)
             if "Ranking" in df.columns:
-                df = df.sort_values(by="Ranking")[
-                    ["Participant", "Ranking"]
-                ]
+                df = df.sort_values(by="Ranking")[["Participant", "Ranking"]]
             else:
-                warnings.warn("No 'Outward Response Ranking' column found in the DataFrame.")
+                warnings.warn(
+                    "No 'Outward Response Ranking' column found in the DataFrame."
+                )
                 df = pd.DataFrame
             return df
         except Exception as e:
-            raise Exception(f"Failed to get outward response rankings for node: {str(e)}")
+            raise Exception(
+                f"Failed to get outward response rankings for node: {str(e)}"
+            )

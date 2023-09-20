@@ -1,4 +1,5 @@
 import emoji
+
 from src.data.data_validation import validate_data_types
 
 

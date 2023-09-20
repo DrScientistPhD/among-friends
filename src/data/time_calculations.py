@@ -3,13 +3,18 @@ import warnings
 import numpy as np
 import pandas as pd
 
-from src.data.data_validation import (validate_columns_in_dataframe,
-                                      validate_data_types, validate_dataframe)
+from src.data.data_validation import (
+    validate_columns_in_dataframe,
+    validate_data_types,
+    validate_dataframe,
+)
 
 
 class TimeCalculations:
     @staticmethod
-    def calculate_time_diff(df: pd.DataFrame, timestamp1: str, timestamp2: str) -> pd.DataFrame:
+    def calculate_time_diff(
+        df: pd.DataFrame, timestamp1: str, timestamp2: str
+    ) -> pd.DataFrame:
         """
         Calculates the time difference between two timestamps (Unix time in milliseconds) and stores the result in a
         new column 'time_diff'. The time difference is given in seconds. A warning is raised if any time difference is
@@ -51,7 +56,9 @@ class TimeCalculations:
         return df
 
     @staticmethod
-    def calculate_half_life(df: pd.DataFrame, column: str, percentile: float = 0.75) -> float:
+    def calculate_half_life(
+        df: pd.DataFrame, column: str, percentile: float = 0.75
+    ) -> float:
         """
         Calculates the half-life based on a specified percentile of a specified column in the given DataFrame.
 
