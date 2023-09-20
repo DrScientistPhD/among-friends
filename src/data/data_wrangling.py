@@ -2,15 +2,18 @@ import pandas as pd
 import polars as pl
 from polars import col
 
-from src.data.data_validation import (validate_columns_in_dataframe,
-                                      validate_data_types, validate_dataframe)
+from src.data.data_validation import (
+    validate_columns_in_dataframe,
+    validate_data_types,
+    validate_dataframe,
+)
 from src.data.emoji_translation import EmojiTranslator
 
 
 class DateTimeConverter:
     @staticmethod
     def convert_unix_to_datetime(
-            df: pd.DataFrame, timestamp_column: str
+        df: pd.DataFrame, timestamp_column: str
     ) -> pd.DataFrame:
         """
         Converts a column with Unix timestamps (in milliseconds) to a more readable datetime format.
@@ -86,7 +89,7 @@ class MessageDataWrangler:
         )
 
         # Check if there are any records that meet the specified thread_id filter
-        if df[df['thread_id'] == thread_id].empty:
+        if df[df["thread_id"] == thread_id].empty:
             raise ValueError(f"No records found for thread_id: {thread_id}")
 
         try:
@@ -123,14 +126,14 @@ class MessageDataWrangler:
 
     @staticmethod
     def concatenate_comment_threads(
-            df_pd: pd.DataFrame, group_participants_n: int
+        df_pd: pd.DataFrame, group_participants_n: int
     ) -> pd.DataFrame:
         """
-        Concatenates comment threads from a pandas DataFrame, taking the i-th row and
-        concatenating it with the next rows that match the criteria. Filters responses based on
-        comment_from_recipient_id, takes the first n responses, and concatenates them horizontally
-        with the original comment row. Responses are filtered to exclude cases such that the comment_from_recipient_id
-        cannot be equal to the response_from_recipient_id (excludes instances where a person responds to themselves).
+        Concatenates comment threads from a pandas DataFrame, taking the i-th row and concatenating it with the next
+        rows that match the criteria. Filters responses based on comment_from_recipient_id, takes the first n
+        responses, and concatenates them horizontally with the original comment row. Responses are filtered to
+        exclude cases such that the comment_from_recipient_id cannot be equal to the response_from_recipient_id (
+        excludes instances where a person responds to themselves).
 
         Args:
             df_pd (pd.DataFrame): Input pandas DataFrame with columns representing comment threads.
@@ -149,7 +152,13 @@ class MessageDataWrangler:
         # Validate input data types
         validate_dataframe(df_pd)
         validate_columns_in_dataframe(
-            df_pd, ["comment_id", "comment_date_sent", "comment_from_recipient_id", "comment_body"]
+            df_pd,
+            [
+                "comment_id",
+                "comment_date_sent",
+                "comment_from_recipient_id",
+                "comment_body",
+            ],
         )
         validate_data_types(group_participants_n, int, "group_participants_n")
 
@@ -255,15 +264,15 @@ class EmojiDataWrangler:
             return slim_df
 
         except Exception as e:
-            raise Exception(
-                f"Failed to filter and rename emojis DataFrame: {str(e)}"
-            )
+            raise Exception(f"Failed to filter and rename emojis DataFrame: {str(e)}")
 
     @staticmethod
-    def merge_message_with_emoji(message_df: pd.DataFrame, emoji_df: pd.DataFrame) -> pd.DataFrame:
+    def merge_message_with_emoji(
+        message_df: pd.DataFrame, emoji_df: pd.DataFrame
+    ) -> pd.DataFrame:
         """
-        Merges two DataFrames, one containing message details and the other containing emoji details,
-        based on the 'comment_id' in the message DataFrame and the 'message_id' in the emoji DataFrame.
+        Merges two DataFrames, one containing message details and the other containing emoji details, based on the
+        'comment_id' in the message DataFrame and the 'message_id' in the emoji DataFrame.
 
         Args:
             message_df (pd.DataFrame): DataFrame containing message details, with a 'comment_id' column.
@@ -280,8 +289,8 @@ class EmojiDataWrangler:
         # Validate input data
         validate_dataframe(message_df)
         validate_dataframe(emoji_df)
-        validate_columns_in_dataframe(message_df, ['comment_id'])
-        validate_columns_in_dataframe(emoji_df, ['message_id'])
+        validate_columns_in_dataframe(message_df, ["comment_id"])
+        validate_columns_in_dataframe(emoji_df, ["message_id"])
 
         try:
             # Merge message and emoji dataframes on the specified columns
@@ -318,7 +327,15 @@ class QuotationResponseDataWrangler:
         # Validate input data types
         validate_dataframe(df)
         validate_columns_in_dataframe(
-            df, ["comment_id", "comment_thread_id", "comment_from_recipient_id", "quote_id", "comment_date_sent", "comment_body"]
+            df,
+            [
+                "comment_id",
+                "comment_thread_id",
+                "comment_from_recipient_id",
+                "quote_id",
+                "comment_date_sent",
+                "comment_body",
+            ],
         )
 
         try:
@@ -342,15 +359,18 @@ class QuotationResponseDataWrangler:
                 }
             )
 
-            # Oddly enough, the quote_id is a timestamp that ties a response back to the original message (the quotation)
-            # After the merge, drop one of the duplicate quote_id columns and rename the other back to its original name.
+            # Oddly enough, the quote_id is a timestamp that ties a response back to the original message (the #
+            # quotation) # After the merge, drop one of the duplicate quote_id columns and rename the other back to
+            # its original name.
             quotation_response_df = quotation_df.merge(
                 response_df, left_on="quotation_date_sent", right_on="quote_id"
             )
 
             # Drop the quote_id_y column and rename quote_id_x to quote_id
             quotation_response_df.drop(columns=["quote_id_y"], inplace=True)
-            quotation_response_df.rename(columns={"quote_id_x": "quote_id"}, inplace=True)
+            quotation_response_df.rename(
+                columns={"quote_id_x": "quote_id"}, inplace=True
+            )
 
             quotation_response_df.reset_index(drop=True, inplace=True)
 

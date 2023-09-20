@@ -5,7 +5,7 @@ pn.extension(loading_spinner="dots")
 
 class SocialNetworkPage:
     def __init__(
-            self, date_range_slider, node_selector, min_date, max_date, ui_components
+        self, date_range_slider, node_selector, min_date, max_date, ui_components
     ):
         """
         Initializes the SocialNetworkPage class.

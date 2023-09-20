@@ -73,7 +73,7 @@ class SnaDataWrangler:
 
         except Exception as e:
             raise Exception(
-                f"Failed to subset and assign new category to input dataframe."
+                f"Failed to subset and assign new category to input dataframe: {str(e)}"
             )
 
     @staticmethod
@@ -131,7 +131,7 @@ class SnaDataWrangler:
 
         except Exception as e:
             raise Exception(
-                f"Failed to subset and assign new category to input dataframe."
+                f"Failed to subset and assign new category to input dataframe: {str(e)}"
             )
 
     @staticmethod
@@ -189,7 +189,7 @@ class SnaDataWrangler:
 
         except Exception as e:
             raise Exception(
-                f"Failed to subset and assign new category to input dataframe."
+                f"Failed to subset and assign new category to input dataframe: {str(e)}"
             )
 
     @staticmethod
@@ -207,13 +207,15 @@ class SnaDataWrangler:
             interaction_type (str): The type of interaction to be processed. One of "message", "emoji", "quotation".
             base_value (float): Base value used to derive the weight of interactions.
             message_slim_df (DataFrame): A preprocessed message dataframe.
-            emoji_slim_df (Optional[DataFrame]): A preprocessed emoji dataframe. Required only if interaction_type is "emoji".
+            emoji_slim_df (Optional[DataFrame]): A preprocessed emoji dataframe. Required only if interaction_type is
+            "emoji".
 
         Returns:
             DataFrame: The processed dataframe.
 
         Raises:
-            TypeError: If the interaction_type is not a str, or the base_value is not a float, or the dataframes are not valid.
+            TypeError: If the interaction_type is not a str, or the base_value is not a float, or the dataframes are
+            not valid.
             ValueError: If the provided `data_type` is not one of "response", "emoji", "quotation".
             Exception: For other exceptions during processing.
         """

@@ -1,5 +1,8 @@
 # Data Directory
 
+*The mocked_data directory contains only the minimum files required to locally generate the Among Friends dashboard, 
+and does not contain all the files or columns listed below.*
+
 This directory contains several CSV files related to the project. As no formal documentation is provided by Signal, the following is inferred by the repository author and may contain inaccurate information.:
 
 ## group_memberships.csv
