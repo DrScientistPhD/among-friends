@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+
+from src.data import make_network_dataset
+
+make_network_dataset.main()
