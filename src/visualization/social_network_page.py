@@ -143,7 +143,7 @@ class SocialNetworkPage:
 
         <br>**Outward Response Rankings** evaluate the activity level of each participant in responding to others 
         and the intensity of those responses. This takes into account both the frequency and timing of responses. A 
-        lower ranking (with 1 being the highest) signifies that the selected participant has a more pronounced 
+        stronger ranking (with 1 being the strongest) signifies that the selected participant has a more pronounced 
         response to the ranked participant.
         </div>
         """
