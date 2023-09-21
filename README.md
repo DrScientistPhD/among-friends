@@ -5,6 +5,8 @@ broad use or distribution.
 
 An interactive Panel/HoloViews app for analyzing and visualizing social network patterns in Signal group text chat data.
 
+https://github.com/DrScientistPhD/among-friends/assets/38797267/ce4fff97-0562-49f3-9603-d12197c21ed6
+
 ## Table of Contents
 
 - [Installation](#installation)
