@@ -64,9 +64,9 @@ class DateTimeConverter:
 
 class MessageDataWrangler:
     @staticmethod
-    def filter_and_rename_messages_df(df: pd.DataFrame, thread_id: int) -> pd.DataFrame:
+    def filter_and_rename_sna_messages_df(df: pd.DataFrame, thread_id: int) -> pd.DataFrame:
         """
-        Filters and renames columns of a given DataFrame representing messages.
+        Filters and renames columns of a given DataFrame representing messages for social network analysis.
 
         Args:
             df (pd.DataFrame): The original DataFrame to be filtered and renamed.
@@ -122,7 +122,7 @@ class MessageDataWrangler:
             return slim_df
 
         except Exception as e:
-            raise Exception(f"Failed to filter and rename messages DataFrame: {str(e)}")
+            raise Exception(f"Failed to filter and rename messages DataFrame for SNA purposes: {str(e)}")
 
     @staticmethod
     def concatenate_comment_threads(

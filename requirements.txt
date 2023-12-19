@@ -21,3 +21,5 @@ panel==1.2.1
 plotly==5.16.1
 holoviews==1.17.1
 bokeh==3.2.2
+openai==1.4.0
+langchain

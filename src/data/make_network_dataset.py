@@ -84,7 +84,7 @@ def generate_edge_weights(
         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Tuple of dataframes for response, emoji, and quotation weights.
     """
     logger.info("Generating response, emoji, and quotation edges")
-    message_slim = MessageDataWrangler.filter_and_rename_messages_df(
+    message_slim = MessageDataWrangler.filter_and_rename_sna_messages_df(
         message_df, thread_id=thread_id
     )
 
