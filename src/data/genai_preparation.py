@@ -188,7 +188,7 @@ class GenAiDataWrangler:
             str: A JSON string containing the message data and metadata.
 
         Raises:
-            TypeError: If message_df or recipient_df are not pandas DataFrames.
+            TypeError: If processed_message_df is not a pandas DataFrames.
             KeyError: If the specified columns do not exist in the DataFrame.
             Exception: If there's an error during generation of the json object.
         """
@@ -308,6 +308,12 @@ class GenAiDataWrangler:
 
         Returns:
             str: A JSON string containing the message data and metadata.
+
+        Raises:
+            TypeError: If processed_message_df is not a pandas DataFrames.
+            KeyError: If the specified columns do not exist in the DataFrame.
+            Exception: If there's an error during generation of the json object.
+
         """
         # Validate input data types
         validate_dataframe(processed_message_df)
@@ -332,14 +338,18 @@ class GenAiDataWrangler:
             }
         }
 
-        # Convert the processed_message_df to a dictionary, and append the metadata to the beginning of said dictionary.
-        user_data_dict = {
-            **user_metadata,
-            "users": processed_message_df.to_dict(orient="records"),
-        }
+        try:
+            # Convert the processed_message_df to a dictionary, and append the metadata to the beginning of said dictionary.
+            user_data_dict = {
+                **user_metadata,
+                "users": processed_message_df.to_dict(orient="records"),
+            }
 
-        print(user_data_dict)
+            user_data_json = json.dumps(user_data_dict)
 
-        user_data_json = json.dumps(user_data_dict)
+            return user_data_json
 
-        return user_data_json
+        except Exception as e:
+            raise Exception(
+                f"Failed to convert processed user data to json: {str(e)}"
+            )
