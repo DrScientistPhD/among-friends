@@ -9,7 +9,7 @@ fake = Faker()
 @pytest.fixture
 def fake_message_df():
     """
-    Fixture to generate fake DataFrame data for testing messages DataFrame.
+    Fixture to generate fake DataFrame data for testing messages DataFrames.
 
     Returns:
         pd.DataFrame: Fake DataFrame with random data.
@@ -17,7 +17,9 @@ def fake_message_df():
 
     n = 100
 
-    ids = [fake.random_int(min=1, max=1000) for _ in range(n)]
+    ids_1 = [fake.random_int(min=1, max=1000) for _ in range(n)]
+
+    ids_2 = [fake.random_int(min=1, max=1000) for _ in range(n)]
 
     date_sent = [
         fake.random_int(min=1673137959372, max=1673378972279) for _ in range(n)
@@ -25,12 +27,34 @@ def fake_message_df():
 
     return pd.DataFrame(
         {
-            "_id": ids,
+            "_id": ids_1,
             "date_sent": date_sent,
             "thread_id": [fake.random_int(min=1, max=3) for _ in range(n)],
-            "from_recipient_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "from_recipient_id": [fake.random_int(min=1, max=3) for _ in range(n)],
             "body": [fake.sentence(nb_words=6) for _ in range(n)],
-            "quote_id": ids,  # Using ids as quote_id to mimic reference to another message
+            "quote_id": ids_2,  # Using ids as quote_id to mimic reference to another message
+            "quote_author": [fake.random_int(min=1, max=3) for _ in range(n)],
+            "quote_body": [fake.sentence(nb_words=6) for _ in range(n)],
+        }
+    )
+
+
+@pytest.fixture
+def fake_recipient_df():
+    """
+    Fixture to generate fake DataFrame data for testing recipient DataFrames.
+
+    Returns:
+        pd.DataFrame: Fake DataFrame with random data.
+    """
+
+    n = 100
+
+    return pd.DataFrame(
+        {
+            "_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
+            "phone": [fake.phone_number() for _ in range(n)],
+            "profile_joined_name": [fake.name() for _ in range(n)],
         }
     )
 
@@ -303,3 +327,45 @@ def fake_network_graph():
         )
 
     return g
+
+
+@pytest.fixture
+def fake_processed_message_df():
+    """
+    Fixture to generate fake DataFrame data for testing processed messages for GenAI purposes.
+
+    Returns:
+        pd.DataFrame: Fake DataFrame with random data.
+    """
+
+    n = 100
+
+    return pd.DataFrame(
+        {
+            "date_sent_datetime": [str(fake.date_this_decade()) for _ in range(n)],
+            "message_author": [fake.name() for _ in range(n)],
+            "body": [fake.sentence(nb_words=6) for _ in range(n)],
+            "quote_id_datetime": [str(fake.date_this_decade()) for _ in range(n)],
+            "quote_author": [fake.random_int(min=1, max=3) for _ in range(n)],
+            "quote_body": [fake.sentence(nb_words=6) for _ in range(n)],
+        }
+    )
+
+
+@pytest.fixture
+def fake_processed_user_df():
+    """
+    Fixture to generate fake DataFrame data for testing processed user data for GenAI purposes.
+
+    Returns:
+        pd.DataFrame: Fake DataFrame with random data.
+    """
+
+    n = 100
+
+    return pd.DataFrame(
+        {
+            "profile_joined_name": [fake.name() for _ in range(n)],
+            "phone": [fake.phone_number() for _ in range(n)],
+        }
+    )
