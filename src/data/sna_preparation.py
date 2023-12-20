@@ -148,7 +148,7 @@ class SnaDataWrangler:
 
         Raises:
             TypeError: If df is not a pandas DataFrame.
-            ValeError: If input df is missing required columns.
+            KeyError: If input df is missing required columns.
             Exception: If the standardization process fails.
         """
         # Validate input data
