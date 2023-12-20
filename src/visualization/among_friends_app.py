@@ -6,7 +6,7 @@ import holoviews as hv
 import pandas as pd
 import panel as pn
 
-from src.data.csv_mover import CSVMover
+from src.data.data_mover import CSVMover
 from src.data.sna_preparation import NodesEdgesDataProcessor
 from src.visualization.generative_text_page import GenerativeText
 from src.visualization.graph_generators import NetworkGraphGenerator
