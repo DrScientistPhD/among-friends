@@ -6,7 +6,7 @@ import click
 import pandas as pd
 
 # Local project imports
-from src.data.csv_mover import CSVMover
+from src.data.data_mover import CSVMover
 from src.data.data_wrangling import EmojiDataWrangler, MessageDataWrangler
 from src.data.recipient_mapper import RecipientMapper
 from src.data.sna_preparation import SnaDataWrangler
@@ -84,7 +84,7 @@ def generate_edge_weights(
         Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Tuple of dataframes for response, emoji, and quotation weights.
     """
     logger.info("Generating response, emoji, and quotation edges")
-    message_slim = MessageDataWrangler.filter_and_rename_messages_df(
+    message_slim = MessageDataWrangler.filter_and_rename_sna_messages_df(
         message_df, thread_id=thread_id
     )
 
@@ -145,7 +145,7 @@ def main(data_source, thread_id) -> None:
     specified output file).
     """
     try:
-        logger.info("Making final network data set from raw data")
+        logger.info("Generating and saving data for SNA...")
 
         message_df, emoji_df, recipient_df = import_data(data_source)
         (
@@ -158,13 +158,13 @@ def main(data_source, thread_id) -> None:
             response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df
         )
 
-        logger.info("Mapping names to participant IDs")
         nodes_edges_df = RecipientMapper.update_node_participant_names(
             nodes_edges_raw_id_df, recipient_df
         )
 
-        logger.info("Saving final nodes-edges dataframe")
         export_nodes_edges_data(data_source, nodes_edges_df)
+
+        logger.info("Done generating and saving data for SNA.")
 
     except ValueError as e:
         logger.error(f"Error encountered: {str(e)}")

@@ -94,7 +94,7 @@ class TestMessageDataWrangler:
         ]
 
         filtered_and_renamed_df = (
-            self.message_data_wrangler.filter_and_rename_messages_df(df_copy, self.thread_id_n)
+            self.message_data_wrangler.filter_and_rename_sna_messages_df(df_copy, self.thread_id_n)
         )
 
         assert isinstance(filtered_and_renamed_df, pd.DataFrame)
@@ -107,11 +107,11 @@ class TestMessageDataWrangler:
         """
         # Passing a non-DataFrame input
         with pytest.raises(TypeError):
-            self.message_data_wrangler.filter_and_rename_messages_df("invalid_data", self.thread_id_n)
+            self.message_data_wrangler.filter_and_rename_sna_messages_df("invalid_data", self.thread_id_n)
 
         # Passing None as input
         with pytest.raises(TypeError):
-            self.message_data_wrangler.filter_and_rename_messages_df(None, self.thread_id_n)
+            self.message_data_wrangler.filter_and_rename_sna_messages_df(None, self.thread_id_n)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_concatenate_comment_threads_valid(

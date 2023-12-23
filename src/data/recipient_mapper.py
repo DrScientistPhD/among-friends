@@ -28,7 +28,7 @@ class RecipientMapper:
         try:
             recipient_id_to_name = df_recipient.set_index("_id")[
                 "profile_joined_name"
-            ].to_dict()
+            ].dropna().to_dict()
             return recipient_id_to_name
 
         except Exception as e:
