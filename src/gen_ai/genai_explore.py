@@ -1,8 +1,11 @@
+# python -m spacy download en_core_web_sm
+
 import os
 from openai import OpenAI
 
 # client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-
+import spacy
+nlp = spacy.load('en_core_web_sm')
 from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv())
 
@@ -53,21 +56,25 @@ conversation = ConversationChain(
 )
 
 
-from src.data.data_mover import CSVMover
-from src.data.recipient_mapper import RecipientMapper
-from src.data.data_wrangling import DateTimeConverter
-from src.data.recipient_mapper import RecipientMapper
-import json
-import numpy as np
-import pandas as pd
-from src.data.data_validation import (
-    validate_columns_in_dataframe,
-    validate_data_types,
-    validate_dataframe,
-)
-import pandas as pd
 
+from src.data.genai_preparation import ProcessMessageData, ProcessUserData
+from src.data.data_mover import CSVMover, TextMover
 message_df = CSVMover.import_csv("data/production_data/raw", "message")
 recipient_df = CSVMover.import_csv("data/production_data/raw", "recipient")
 
-from src.data.genai_preparation import GenAiDataWrangler
+message = CSVMover.import_csv("data/production_data/raw", "message")
+recipient = CSVMover.import_csv("data/production_data/raw", "recipient")
+
+thread_id = 2
+
+processed_message_df = ProcessMessageData.clean_up_messages(message, recipient, thread_id)
+
+message_sentences_df = ProcessMessageData.processed_message_data_to_sentences(processed_message_df)
+
+messages_data_txt = ProcessMessageData.concatenate_with_neighbors(message_sentences_df)
+
+user_data_txt = ProcessUserData.user_data_to_sentences(recipient)
+
+
+TextMover.export_sentences_to_file(messages_data_txt, "production_data/processed", "messages_data")
+TextMover.export_sentences_to_file(user_data_txt, "production_data/processed", "user_data")

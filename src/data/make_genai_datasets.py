@@ -7,7 +7,7 @@ import pandas as pd
 
 # Local project imports
 from src.data.data_mover import CSVMover, JSONMover
-from src.data.genai_preparation import GenAiDataWrangler
+from src.data.genai_preparation import ProcessMessageData
 
 # Instantiate logger
 logger = logging.getLogger(__name__)
@@ -58,17 +58,17 @@ def generate_message_and_user_data(
         Tuple[str, str]: A tuple of JSON strings for messages and users.
     """
     logger.info("Generating JSON objects for messages and users")
-    processed_message_df = GenAiDataWrangler.process_messages_for_genai(
+    processed_message_df = ProcessMessageData.clean_up_messages(
         message_df=message, recipient_df=recipient, thread_id=thread_id
     )
 
-    message_data_json = GenAiDataWrangler.message_data_to_json(processed_message_df)
+    message_data_json = ProcessMessageData.message_data_to_json(processed_message_df)
 
-    processed_user_df = GenAiDataWrangler.process_user_data_for_genai(
+    processed_user_df = ProcessMessageData.process_user_data_for_genai(
         recipient_df=recipient
     )
 
-    user_data_json = GenAiDataWrangler.user_data_to_json(processed_user_df)
+    user_data_json = ProcessMessageData.user_data_to_json(processed_user_df)
 
     return message_data_json, user_data_json
 

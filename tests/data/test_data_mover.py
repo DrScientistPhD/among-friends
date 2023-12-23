@@ -2,7 +2,9 @@ import pandas as pd
 import pytest
 from faker import Faker
 
+import src.data.data_mover
 from src.data.data_mover import CSVMover
+from src.data.data_mover import TextMover
 
 
 class TestCSVMover:
@@ -82,3 +84,81 @@ class TestCSVMover:
 
         with pytest.raises(Exception, match="Failed to export DataFrame to CSV file"):
             self.csv_mover.export_csv(df, parent_directory, file_name)
+
+
+class TestTextMover:
+    """Test class for the TextMover class."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Fixture to set up resources before each test method."""
+        self.fake = Faker()
+        self.text_mover = TextMover()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_import_text_file_as_list_type(self, iteration, mocker):
+        """Test to check if the output of import_text_file() is a list."""
+        # Generate a random file name for each iteration
+        file_name = f"dummy_file_{iteration}.txt"
+
+        # Mocking os.path.join to construct the full file path
+        mocker.patch("os.path.join", return_value=f"parent_dir/{file_name}.csv")
+
+        # Mocking os.path.isfile to return True
+        mocker.patch("os.path.isfile", return_value=True)
+
+        # Mocking import_text_file to return a list with fake data
+        mocker.patch("src.data.data_mover.TextMover.import_text_file", return_value=list())
+
+        # Test the import_text_file method
+        fake_list = self.text_mover.import_text_file("parent_dir", file_name)
+        assert isinstance(fake_list, list)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_import_text_file_graceful_failure(self, iteration, mocker):
+        """Test to check if the function raises an Exception when given a non-existent file path."""
+        # Generate a random file name for each iteration
+        file_name = f"non_existent_file_{iteration}.txt"
+
+        # Mocking os.path.join to construct the full file path
+        mocker.patch("os.path.join", return_value=f"parent_dir/{file_name}.csv")
+
+        # Mocking os.path.isfile to return False
+        mocker.patch("os.path.isfile", return_value=False)
+
+        with pytest.raises(Exception):
+            self.text_mover.import_text_file("parent_dir", file_name)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_export_sentences_to_file_success(self, iteration, fake_list_of_sentences, mocker):
+        """Test to check if the function exports a list of sentences to a text file successfully."""
+        fake_list = fake_list_of_sentences
+        parent_directory = "parent_dir"
+        file_name = "test_file"
+
+        # Mocking validate_data_types to bypass actual validation
+        mocker.patch("src.data.data_mover.validate_data_types", return_value=None)
+
+        # Mocking export_sentences_to_file method to avoid actual writing
+        mocker.patch("src.data.data_mover.TextMover.export_sentences_to_file", return_value=None)
+
+        # Test the export_csv method
+        self.text_mover.export_sentences_to_file(fake_list, parent_directory, file_name)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_export_sentences_to_file_general_exception(
+        self, iteration, fake_list_of_sentences, mocker
+    ):
+        """Test to check if the function raises a general Exception during the export process."""
+        fake_list = fake_list_of_sentences
+        parent_directory = "parent_dir"
+        file_name = "test_file"
+
+        # Mocking export_sentences_to_file method to raise an exception
+        mocker.patch(
+            "src.data.data_mover.TextMover.export_sentences_to_file",
+            side_effect=Exception("Failed to export sentences to text file:"),
+        )
+
+        with pytest.raises(Exception, match="Failed to export sentences to text file:"):
+            self.text_mover.export_sentences_to_file(fake_list, parent_directory, file_name)

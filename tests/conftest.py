@@ -53,7 +53,7 @@ def fake_recipient_df():
     return pd.DataFrame(
         {
             "_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
-            "phone": [fake.phone_number() for _ in range(n)],
+            "phone": [fake.random_int(min=1111111111, max=9999999999) for _ in range(n)],
             "profile_joined_name": [fake.name() for _ in range(n)],
         }
     )
@@ -342,30 +342,25 @@ def fake_processed_message_df():
 
     return pd.DataFrame(
         {
-            "date_sent_datetime": [str(fake.date_this_decade()) for _ in range(n)],
+            "date_sent_string_date": [fake.date_time().strftime("%B %d, %Y %I:%M %p") for _ in range(n)],
             "message_author": [fake.name() for _ in range(n)],
             "body": [fake.sentence(nb_words=6) for _ in range(n)],
-            "quote_id_datetime": [str(fake.date_this_decade()) for _ in range(n)],
-            "quote_author": [fake.random_int(min=1, max=3) for _ in range(n)],
+            "quote_id_string_date": [fake.date_time().strftime("%B %d, %Y %I:%M %p") for _ in range(n)],
+            "quote_author": [fake.name() for _ in range(n)],
             "quote_body": [fake.sentence(nb_words=6) for _ in range(n)],
         }
     )
 
 
 @pytest.fixture
-def fake_processed_user_df():
+def fake_list_of_sentences():
     """
-    Fixture to generate fake DataFrame data for testing processed user data for GenAI purposes.
+    Fixture to generate a fake list of sentences
 
     Returns:
-        pd.DataFrame: Fake DataFrame with random data.
+        List[str]: A list of randomly generated sentences.
     """
 
     n = 100
 
-    return pd.DataFrame(
-        {
-            "profile_joined_name": [fake.name() for _ in range(n)],
-            "phone": [fake.phone_number() for _ in range(n)],
-        }
-    )
+    return [fake.sentence(nb_words=fake.random_int(min=1, max=20)) for _ in range(n)]

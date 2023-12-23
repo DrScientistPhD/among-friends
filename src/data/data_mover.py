@@ -4,7 +4,7 @@ import os
 import pandas as pd
 
 from src.data.data_validation import validate_data_types
-
+from typing import List
 
 class CSVMover:
     @staticmethod
@@ -71,18 +71,18 @@ class CSVMover:
             raise Exception(f"Failed to export DataFrame to CSV file: {str(e)}")
 
 
-class JSONMover:
+class TextMover:
     @staticmethod
-    def import_json(parent_directory: str, file_name: str) -> str:
+    def import_text_file(parent_directory: str, file_name: str) -> List[str]:
         """
-        Imports JSON data from a file.
+        Imports text data from a file.
 
         Args:
-            parent_directory (str): The parent directory where the JSON file is located.
-            file_path (str): The name of the JSON file to be imported.
+            parent_directory (str): The parent directory where the text file is located.
+            file_name (str): The name of the text file to be imported.
 
         Returns:
-            str: The JSON data read from the file.
+            List[str]: A list of strings read from the file, where each string represents a line.
 
         Raises:
             TypeError: If either parent_directory or file_name is not of the expected type (str).
@@ -90,48 +90,51 @@ class JSONMover:
             Exception: If there's an error during the import process.
         """
         # Validate input data
-        validate_data_types(parent_directory, str, "parent_directory")
-        validate_data_types(file_name, str, "file_name")
+        if not isinstance(parent_directory, str) or not isinstance(file_name, str):
+            raise TypeError("Parent directory and file name should be strings.")
 
-        full_file_path = os.path.join(parent_directory, f"{file_name}.json")
+        full_file_path = os.path.join(parent_directory, file_name)
         try:
             # Check if the file exists
             if not os.path.isfile(full_file_path):
-                raise FileNotFoundError(f"The file {file_name}.json does not exist.")
+                raise FileNotFoundError(f"The file {file_name} does not exist.")
 
-            # Read the JSON file
+            # Read the text file
             with open(full_file_path, "r", encoding="utf-8") as f:
-                json_data = json.load(f)
-            return json_data
+                lines = f.readlines()
+                # Strip newline characters and create a list of strings
+                text_data = [line.strip() for line in lines]
 
-        except json.JSONDecodeError as jde:
-            raise jde
+            return text_data
 
         except Exception as e:
-            raise Exception(f"Failed to import JSON file: {str(e)}")
+            raise Exception(f"Failed to import text file: {str(e)}")
 
     @staticmethod
-    def export_json(data_object: str, parent_directory: str, file_name: str) -> None:
+    def export_sentences_to_file(sentences: List[str], parent_directory: str, file_name: str) -> None:
         """
-        Exports a string to a JSON file in the specified directory of the repository.
+        Exports a list of sentences to a text file in the specified directory.
 
         Args:
-            data_object (str): The data object to be exported.
-            parent_directory (str): The parent directory where the JSON file should be saved.
-            file_name: The name of the JSON file to be created.
+            sentences (List[str]): The list of sentences to be exported.
+            parent_directory (str): The parent directory where the text file should be saved.
+            file_name: The name of the text file to be created.
 
         Raises:
-            TypeError: If data_object, parent_directory, or file_name is not of the expected type.
+            TypeError: If sentences, parent_directory, or file_name is not of the expected type.
             Exception: If there's an error during the export process.
         """
-        # Validate input data
-        validate_data_types(data_object, str, "data_object")
-        validate_data_types(parent_directory, str, "parent_directory")
-        validate_data_types(file_name, str, "file_name")
+        # Validate input data types
+        if not isinstance(sentences, list) or not all(isinstance(sentence, str) for sentence in sentences):
+            raise TypeError("Sentences should be a list of strings.")
+        if not isinstance(parent_directory, str) or not isinstance(file_name, str):
+            raise TypeError("Parent directory and file name should be strings.")
 
-        path_to_file = os.path.join("data", parent_directory, f"{file_name}.json")
+        path_to_file = os.path.join("data", parent_directory, f"{file_name}.txt")
+
         try:
             with open(path_to_file, "w", encoding="utf-8") as f:
-                json.dump(data_object, f, ensure_ascii=False)
+                for sentence in sentences:
+                    f.write(sentence + "\n")
         except Exception as e:
-            raise Exception(f"Failed to export data to JSON file: {str(e)}")
+            raise Exception(f"Failed to export sentences to text file: {str(e)}")

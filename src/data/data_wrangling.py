@@ -61,6 +61,62 @@ class DateTimeConverter:
                 f"An error occurred while converting the Unix timestamps to datetime: {str(e)}"
             )
 
+    @staticmethod
+    def convert_unix_to_string_date(
+        df: pd.DataFrame, timestamp_column: str
+    ) -> pd.DataFrame:
+        """
+        Converts a column with Unix timestamps (in milliseconds) to a more readable datetime format.
+
+        Args:
+            df (pd.DataFrame): The DataFrame containing the Unix timestamp column.
+            timestamp_column (str): The name of the column containing Unix timestamps in milliseconds.
+
+        Returns:
+            pd.DataFrame: A DataFrame with a new column containing the converted datetimes.
+
+        Raises:
+            TypeError: If df is not a pandas DataFrame, or timestamp_column is not a string.
+            KeyError: If the specified timestamp column does not exist in the DataFrame.
+            ValueError: If an unexpected error occurs during datetime conversion.
+            Exception: If an error occurs converting unix to datetime.
+        """
+        # Validate input data
+        validate_dataframe(df)
+        validate_data_types(timestamp_column, str, "timestamp_column")
+        validate_columns_in_dataframe(df, [timestamp_column])
+
+        try:
+            # Check if the timestamp column exists in the DataFrame
+            if timestamp_column not in df.columns:
+                raise KeyError(
+                    f"The specified column '{timestamp_column}' does not exist in the DataFrame."
+                )
+
+            # Check if the timestamp column is of integer type
+            if not pd.api.types.is_integer_dtype(df[timestamp_column]):
+                raise TypeError(
+                    f"The specified column '{timestamp_column}' "
+                    f"must be of integer type representing Unix timestamps in milliseconds."
+                )
+
+            # Convert the Unix timestamps to datetime format in UTC
+            new_column_name = f"{timestamp_column}_string_date"
+            df[new_column_name] = pd.to_datetime(df[timestamp_column], unit="ms", utc=True)
+
+            # Convert to local time zone
+            df[new_column_name] = df[new_column_name].dt.tz_convert('America/New_York')
+
+            # Convert the datetime to the specified string format with AM/PM
+            df[new_column_name] = df[new_column_name].dt.strftime("%B %d, %Y %I:%M %p")
+
+            return df
+
+        except Exception as e:
+            raise Exception(
+                f"An error occurred while converting the Unix timestamps to string datetime: {str(e)}"
+            )
+
 
 class MessageDataWrangler:
     @staticmethod

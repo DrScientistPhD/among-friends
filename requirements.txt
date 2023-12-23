@@ -23,3 +23,4 @@ holoviews==1.17.1
 bokeh==3.2.2
 openai==1.4.0
 langchain
+phonenumbers

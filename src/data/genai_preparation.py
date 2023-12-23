@@ -1,7 +1,9 @@
-import json
+from typing import List
 
 import numpy as np
 import pandas as pd
+import phonenumbers
+from phonenumbers import geocoder
 
 from src.data.data_validation import (
     validate_columns_in_dataframe,
@@ -12,7 +14,7 @@ from src.data.data_wrangling import DateTimeConverter
 from src.data.recipient_mapper import RecipientMapper
 
 
-class GenAiDataWrangler:
+class ProcessMessageData:
     @staticmethod
     def filter_long_text(text: str) -> str:
         """
@@ -42,7 +44,7 @@ class GenAiDataWrangler:
             raise Exception(f"Failed to filter long text: {str(e)}")
 
     @staticmethod
-    def process_messages_for_genai(
+    def clean_up_messages(
         message_df: pd.DataFrame, recipient_df: pd.DataFrame, thread_id: int
     ) -> pd.DataFrame:
         """
@@ -90,29 +92,28 @@ class GenAiDataWrangler:
             # Filter for the specified thread_id
             message_df = message_df[message_df["thread_id"] == thread_id].copy()
 
-            # Convert date_sent column to datetime
-            processed_data = DateTimeConverter.convert_unix_to_datetime(
+            # Sorting the DataFrame in place
+            message_df.sort_values(by="date_sent", ascending=True, inplace=True)
+
+            # Convert datetime column to an easily read format
+            processed_data = DateTimeConverter.convert_unix_to_string_date(
                 message_df, "date_sent"
             )
-            processed_data["date_sent_datetime"] = processed_data[
-                "date_sent_datetime"
-            ].astype(str)
 
             # Fill in NA values in quote_id column and convert column to datetime
             processed_data["quote_id"] = (
                 processed_data["quote_id"].fillna(0).astype(int)
             )
-            processed_data = DateTimeConverter.convert_unix_to_datetime(
+
+            # Convert datetime column to an easily read format
+            processed_data = DateTimeConverter.convert_unix_to_string_date(
                 processed_data, "quote_id"
             )
-            processed_data["quote_id_datetime"] = processed_data[
-                "quote_id_datetime"
-            ].astype(str)
 
-            # Replace "missing" quote_id_datetimes with a white space.
+            # Replace "missing" quote_id_string_dates with a white space.
             processed_data.loc[
-                processed_data["quote_id_datetime"] == "1970-01-01 00:00:00.000",
-                "quote_id_datetime",
+                processed_data["quote_id_string_date"] == "December 31, 1969 07:00 PM",
+                "quote_id_string_date",
             ] = ""
 
             # Fill in missing values for the quote_author column for easier data processing and select columns
@@ -122,21 +123,18 @@ class GenAiDataWrangler:
 
             # Select for appropriate columns and sort by date_sent_datetime
             message_columns = [
-                "date_sent_datetime",
+                "date_sent_string_date",
                 "from_recipient_id",
                 "body",
-                "quote_id_datetime",
+                "quote_id_string_date",
                 "quote_author",
                 "quote_body",
             ]
+
+            # Remove rows with an empty body
             processed_data = processed_data[processed_data["body"].notnull()]
 
             selected_data = processed_data[message_columns].copy()
-
-            # Sorting the DataFrame in place
-            selected_data.sort_values(
-                by="date_sent_datetime", ascending=True, inplace=True
-            )
 
             # Replace recipient IDs with usernames
             recipient_id_to_name_dict = (
@@ -159,7 +157,7 @@ class GenAiDataWrangler:
 
             # Removes unusually long text and empty body rows from the "body" and "quote_body" columns
             processed_message_df["body"] = processed_message_df["body"].apply(
-                GenAiDataWrangler.filter_long_text
+                ProcessMessageData.filter_long_text
             )
             processed_message_df = processed_message_df[
                 ~processed_message_df["body"].str.strip().eq("")
@@ -167,7 +165,7 @@ class GenAiDataWrangler:
 
             processed_message_df["quote_body"] = processed_message_df[
                 "quote_body"
-            ].apply(GenAiDataWrangler.filter_long_text)
+            ].apply(ProcessMessageData.filter_long_text)
 
             return processed_message_df
 
@@ -177,99 +175,146 @@ class GenAiDataWrangler:
             )
 
     @staticmethod
-    def message_data_to_json(processed_message_df: pd.DataFrame) -> str:
+    def processed_message_data_to_sentences(
+        processed_message_df: pd.DataFrame,
+    ) -> pd.DataFrame:
         """
-        Converts the processed message data to a JSON string and appends metadata information.
+        Converts each row of the processed message DataFrame to a standardized sentence format and returns a DataFrame.
 
         Args:
-            processed_message_df (pd.DataFrame): The processed message data
+            processed_message_df (pd.DataFrame): The processed message DataFrame.
 
         Returns:
-            str: A JSON string containing the message data and metadata.
+            pd.DataFrame: A DataFrame containing standardized sentences.
 
         Raises:
-            TypeError: If processed_message_df is not a pandas DataFrames.
-            KeyError: If the specified columns do not exist in the DataFrame.
-            Exception: If there's an error during generation of the json object.
         """
         # Validate input data types
         validate_dataframe(processed_message_df)
         validate_columns_in_dataframe(
             processed_message_df,
             [
-                "date_sent_datetime",
+                "date_sent_string_date",
                 "message_author",
                 "body",
-                "quote_id_datetime",
+                "quote_id_string_date",
                 "quote_author",
                 "quote_body",
             ],
         )
 
-        # Define the metadata
-        message_metadata = {
-            "fields_metadata": {
-                "date_sent_datetime": {
-                    "description": "Formatted datetime of when the message was sent",
-                    "type": "string",
-                    "source": "system",
-                },
-                "message_author": {
-                    "description": "The name of the author who sent the chat message",
-                    "type": "string",
-                    "source": "system",
-                },
-                "body": {
-                    "description": "The text contents of the chat message",
-                    "type": "string",
-                    "source": "user input",
-                },
-                "quote_id_datetime": {
-                    "description": "Timestamp of the quoted chat message, if applicable",
-                    "type": "string",
-                    "source": "user input",
-                },
-                "quote_author": {
-                    "description": "Author of the quoted message, if applicable",
-                    "type": "string",
-                    "source": "user input",
-                },
-                "quote_body": {
-                    "description": "The text contents of the quoted message body, if applicable",
-                    "type": "string",
-                    "source": "user input",
-                },
-            }
-        }
-
         try:
-            # Convert the processed_message_df to a dictionary, and append the metadata to the beginning of said
-            # dictionary.
-            message_data_dict = {
-                **message_metadata,
-                "messages": processed_message_df.to_dict(orient="records"),
-            }
+            result_df = pd.DataFrame()
+            result_df["sentence"] = processed_message_df.apply(
+                lambda row: (
+                    f"On {row['date_sent_string_date']}, "
+                    f"{row['message_author']} said \"{row['body']}\"."
+                    if row["quote_author"].strip() == ""
+                    else f"On {row['date_sent_string_date']}, "
+                    f"{row['message_author']} said \"{row['body']}\". This message was quoting and responding to "
+                         f"{row['quote_author']} who on {row['quote_id_string_date']} said \"{row['quote_body']}\"."
+                ),
+                axis=1,
+            )
 
-            message_data_json = json.dumps(message_data_dict)
-
-            return message_data_json
+            return result_df
 
         except Exception as e:
             raise Exception(
-                f"Failed to convert processed message data to json: {str(e)}"
+                f"Failed to convert processed message data to sentences: {str(e)}"
             )
 
     @staticmethod
-    def process_user_data_for_genai(recipient_df: pd.DataFrame) -> pd.DataFrame:
+    def concatenate_with_neighbors(message_sentences_df) -> List[str]:
         """
-        Processes the recipient DataFrame for GenAI usage. Data processing includes converting column types,
-        and removing empty fields.
+        Concatenates the values in a DataFrame with their neighboring rows so that each row contains the text from the
+        previous row, the current row, and the next row. The first and last rows will only contain the text from the
+        respective row and the next/previous rows, respectively.
+
+        Args:
+            message_sentences_df (pd.DataFrame): A DataFrame containing the message sentences.
+
+        Returns:
+            List[str]: A list of strings containing the concatenated text.
+
+        """
+        # Validate input data types
+        validate_dataframe(message_sentences_df)
+
+        try:
+            shifted_up = message_sentences_df.shift(-1)
+            shifted_down = message_sentences_df.shift(1)
+
+            concatenated_texts = (
+                (
+                    shifted_down.fillna("")
+                    + " "
+                    + message_sentences_df
+                    + " "
+                    + shifted_up.fillna("")
+                )
+                .sum(axis=1)
+                .str.strip()
+                .tolist()
+            )
+
+            return concatenated_texts
+
+        except Exception as e:
+            raise Exception(f"Failed to concatenate text: {str(e)}")
+
+
+class ProcessUserData:
+    @staticmethod
+    def parse_phone_number(raw_phone: str) -> dict:
+        """
+        Parses a phone number and returns the country code and the phone number without the country code.
+
+        Args:
+            raw_phone (str): The raw phone number to parse.
+
+        Returns:
+            dict: The region and country associated with the parsed phone number.
+
+        Raises:
+            TypeError: If phone_number is not of type str.
+            ValueError: If a phone number cannot be parsed from the provided string.
+        """
+        validate_data_types(raw_phone, str, "phone_number")
+
+        try:
+            # Remove non-numeric characters and whitespace
+            phone_number = "".join(filter(str.isdigit, raw_phone))
+
+            # If it's a 10-digit number, assume it's from the US and add '+1'
+            if len(phone_number) == 10:
+                processed_number = "+1" + phone_number
+            else:
+                # Otherwise, add a '+' symbol to the front
+                processed_number = "+" + phone_number
+
+            # Attempt to parse the phone number
+            parsed_number = phonenumbers.parse(processed_number, None)
+
+            # Get region and country information
+            region = geocoder.description_for_number(parsed_number, "en")
+            country = geocoder.country_name_for_number(parsed_number, "en")
+
+            return {"region": region, "country": country}
+
+        except (ValueError, phonenumbers.NumberParseException) as e:
+            raise ValueError(f"Failed to parse phone number: {str(e)}")
+
+    @staticmethod
+    def user_data_to_sentences(recipient_df: pd.DataFrame) -> List[str]:
+        """
+        Converts each row of the recipient DataFrame to a standardized sentence format.
 
         Args:
             recipient_df (pd.DataFrame): The recipient DataFrame with usernames and telephone numbers.
 
         Returns:
-            pd.DataFrame: A new DataFrame with the filtered and selected columns.
+            List[str]: A list of standardized sentences.
 
         Raises:
             TypeError: If message_df or recipient_df are not pandas DataFrames, or thread_id is not an int.
@@ -287,69 +332,28 @@ class GenAiDataWrangler:
 
             processed_user_df = user_df.dropna().copy()
 
-            # Convert phone type to string and remove non-numeric characters
-            processed_user_df["phone"] = processed_user_df["phone"].astype(str)
-            processed_user_df["phone"] = processed_user_df["phone"].apply(lambda x: ''.join(filter(str.isdigit, x)))
-
-            return processed_user_df
-
-        except Exception as e:
-            raise Exception(
-                f"Failed to process us DataFrame for GenAI purposes: {str(e)}"
+            processed_user_df["phone"] = (
+                processed_user_df["phone"].astype(int).astype(str)
             )
 
-    @staticmethod
-    def user_data_to_json(processed_message_df: pd.DataFrame) -> str:
-        """
-        Converts the processed user data to a JSON string and appends metadata information.
+            # Derive region and country values
+            processed_user_df["phone_region"] = processed_user_df["phone"].apply(
+                lambda x: ProcessUserData.parse_phone_number(x).get("region", None)
+            )
+            processed_user_df["phone_country"] = processed_user_df["phone"].apply(
+                lambda x: ProcessUserData.parse_phone_number(x).get("country", None)
+            )
 
-        Args:
-            processed_message_df (pd.DataFrame): The processed user data
+            sentences = processed_user_df.apply(
+                lambda row: f'The user known as {row["profile_joined_name"]} has a phone '
+                f'number of {row["phone"]}, which belongs to the region of {row["phone_region"]}, in the country of '
+                            f'{row["phone_country"]}.',
+                axis=1,
+            ).tolist()
 
-        Returns:
-            str: A JSON string containing the message data and metadata.
-
-        Raises:
-            TypeError: If processed_message_df is not a pandas DataFrames.
-            KeyError: If the specified columns do not exist in the DataFrame.
-            Exception: If there's an error during generation of the json object.
-
-        """
-        # Validate input data types
-        validate_dataframe(processed_message_df)
-        validate_columns_in_dataframe(
-            processed_message_df, ["profile_joined_name", "phone"]
-        )
-
-        # Define the metadata
-        user_metadata = {
-            "fields_metadata": {
-                "profile_joined_name": {
-                    "description": "The user's profile name",
-                    "type": "string",
-                    "source": "user",
-                },
-                "phone": {
-                    "description": "The phone number associated with the user's account, listed using the North "
-                    "American Numbering Plan.",
-                    "type": "string",
-                    "source": "system",
-                },
-            }
-        }
-
-        try:
-            # Convert the processed_message_df to a dictionary, and append the metadata to the beginning of said dictionary.
-            user_data_dict = {
-                **user_metadata,
-                "users": processed_message_df.to_dict(orient="records"),
-            }
-
-            user_data_json = json.dumps(user_data_dict)
-
-            return user_data_json
+            return sentences
 
         except Exception as e:
             raise Exception(
-                f"Failed to convert processed user data to json: {str(e)}"
+                f"Failed to produce sentences from user data for GenAI purposes: {str(e)}"
             )
