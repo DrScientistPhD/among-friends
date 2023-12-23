@@ -2,9 +2,7 @@ import pandas as pd
 import pytest
 from faker import Faker
 
-import src.data.data_mover
-from src.data.data_mover import CSVMover
-from src.data.data_mover import TextMover
+from src.data.data_mover import CSVMover, TextMover, DocumentMover
 
 
 class TestCSVMover:
@@ -162,3 +160,49 @@ class TestTextMover:
 
         with pytest.raises(Exception, match="Failed to export sentences to text file:"):
             self.text_mover.export_sentences_to_file(fake_list, parent_directory, file_name)
+
+
+class TestDocumentMover:
+    """Test class for the DocumentMover class."""
+
+    @pytest.fixture(autouse=True)
+    def setup_class(self):
+        """Fixture to set up resources before each test method."""
+        self.fake = Faker()
+        self.document_mover = DocumentMover()
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_load_and_split_text_valid_file(self, iteration, mocker):
+        """Test to check if the function loads and splits text from a file."""
+        # Generate a random file name for each iteration
+        file_name = f"test_file_{iteration}.txt"
+
+        # Mocking os.path.join to construct the full file path
+        mocker.patch("os.path.join", return_value=f"parent_dir/{file_name}")
+
+        # Mocking os.path.isfile to return True
+        mocker.patch("os.path.isfile", return_value=True)
+
+        # Mocking import_documents to return a list with fake data
+        mocker.patch("src.data.data_mover.DocumentMover.load_and_split_text", return_value=["Document1", "Document2", "Document3"])
+
+        # Test the load_and_split_text method
+        documents = self.document_mover.load_and_split_text("parent_dir", file_name)
+        assert isinstance(documents, list)
+        assert all(isinstance(doc, str) for doc in documents)
+        assert len(documents) == 3  # Expecting 3 documents from the mocked data
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_import_documents_graceful_failure(self, iteration, mocker):
+        """Test to check if the function raises an Exception when given a non-existent file path."""
+        # Generate a random file name for each iteration
+        file_name = f"non_existent_file_{iteration}.txt"
+
+        # Mocking os.path.join to construct the full file path
+        mocker.patch("os.path.join", return_value=f"parent_dir/{file_name}.csv")
+
+        # Mocking os.path.isfile to return False
+        mocker.patch("os.path.isfile", return_value=False)
+
+        with pytest.raises(Exception):
+            self.document_mover.load_and_split_text("parent_dir", file_name)
