@@ -1,6 +1,8 @@
 # python -m spacy download en_core_web_sm
 
 import os
+
+import langchain.embeddings
 from openai import OpenAI
 
 # client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
@@ -58,7 +60,7 @@ conversation = ConversationChain(
 
 
 from src.data.genai_preparation import ProcessMessageData, ProcessUserData
-from src.data.data_mover import CSVMover, TextMover
+from src.data.data_mover import CSVMover, TextMover, DocumentMover
 message_df = CSVMover.import_csv("data/production_data/raw", "message")
 recipient_df = CSVMover.import_csv("data/production_data/raw", "recipient")
 
@@ -76,5 +78,13 @@ messages_data_txt = ProcessMessageData.concatenate_with_neighbors(message_senten
 user_data_txt = ProcessUserData.user_data_to_sentences(recipient)
 
 
-TextMover.export_sentences_to_file(messages_data_txt, "production_data/processed", "messages_data")
-TextMover.export_sentences_to_file(user_data_txt, "production_data/processed", "user_data")
+TextMover.export_sentences_to_file(messages_data_txt, "data/production_data/processed", "messages_data")
+TextMover.export_sentences_to_file(user_data_txt, "data/production_data/processed", "users_data")
+
+
+messages_docs = DocumentMover.load_and_split_text("data/production_data/processed", "messages_data")
+users_docs = DocumentMover.load_and_split_text("data/production_data/processed", "users_data")
+
+from langchain.embeddings import SentenceTransformerEmbeddings
+
+embedding = SentenceTransformerEmbeddings(model_name="all-distilroberta-v1")
