@@ -25,3 +25,4 @@ openai==1.4.0
 langchain
 phonenumbers
 sentence-transformers
+pinecone-client
