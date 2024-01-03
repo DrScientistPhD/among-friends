@@ -138,7 +138,7 @@ class TextMover:
         if not isinstance(parent_directory, str) or not isinstance(file_name, str):
             raise TypeError("Parent directory and file name should be strings.")
 
-        path_to_file = os.path.join(parent_directory, f"{file_name}.txt")
+        path_to_file = os.path.join("data", parent_directory, f"{file_name}.txt")
 
         try:
             with open(path_to_file, "w", encoding="utf-8") as f:
@@ -181,6 +181,9 @@ class DocumentMover:
                 os.path.join(parent_directory, f"{file_name}.txt")
             )
             documents = loader.load()
+
+            # Add the source file name to the metadata
+            [doc.metadata.update({'source': file_name}) for doc in documents]
 
             # Split the text by new line
             text_splitter = CharacterTextSplitter(
