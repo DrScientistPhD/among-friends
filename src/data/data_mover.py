@@ -1,10 +1,13 @@
-import json
 import os
+from typing import List
 
 import pandas as pd
+from langchain.docstore.document import Document
+from langchain.document_loaders import TextLoader
+from langchain.text_splitter import CharacterTextSplitter
 
 from src.data.data_validation import validate_data_types
-from typing import List
+
 
 class CSVMover:
     @staticmethod
@@ -93,7 +96,7 @@ class TextMover:
         if not isinstance(parent_directory, str) or not isinstance(file_name, str):
             raise TypeError("Parent directory and file name should be strings.")
 
-        full_file_path = os.path.join(parent_directory, file_name)
+        full_file_path = os.path.join(parent_directory, f"{file_name}.txt")
         try:
             # Check if the file exists
             if not os.path.isfile(full_file_path):
@@ -111,7 +114,9 @@ class TextMover:
             raise Exception(f"Failed to import text file: {str(e)}")
 
     @staticmethod
-    def export_sentences_to_file(sentences: List[str], parent_directory: str, file_name: str) -> None:
+    def export_sentences_to_file(
+        sentences: List[str], parent_directory: str, file_name: str
+    ) -> None:
         """
         Exports a list of sentences to a text file in the specified directory.
 
@@ -125,8 +130,11 @@ class TextMover:
             Exception: If there's an error during the export process.
         """
         # Validate input data types
-        if not isinstance(sentences, list) or not all(isinstance(sentence, str) for sentence in sentences):
+        if not isinstance(sentences, list) or not all(
+            isinstance(sentence, str) for sentence in sentences
+        ):
             raise TypeError("Sentences should be a list of strings.")
+
         if not isinstance(parent_directory, str) or not isinstance(file_name, str):
             raise TypeError("Parent directory and file name should be strings.")
 
@@ -138,3 +146,57 @@ class TextMover:
                     f.write(sentence + "\n")
         except Exception as e:
             raise Exception(f"Failed to export sentences to text file: {str(e)}")
+
+
+class DocumentMover:
+    @staticmethod
+    def load_and_split_text(parent_directory: str, file_name: str) -> List[Document]:
+        """
+        Loads text data from a file and splits it into a list of individual documents.
+
+        Args:
+            parent_directory (str): The parent directory where the text file is located.
+            file_name (str): The name of the text file to be imported.
+
+        Returns:
+            List[Document]: A document containing a list of individual documents.
+
+        Raises:
+            TypeError: If either parent_directory or file_name is not of the expected type (str).
+            FileNotFoundError: If the file does not exist.
+            Exception: If there's an error during the import process.
+        """
+        # Validate input data
+        if not isinstance(parent_directory, str) or not isinstance(file_name, str):
+            raise TypeError("Parent directory and file name should be strings.")
+
+        full_file_path = os.path.join(parent_directory, f"{file_name}.txt")
+        try:
+            # Check if the file exists
+            if not os.path.isfile(full_file_path):
+                raise FileNotFoundError(f"The file {file_name} does not exist.")
+
+            # Load the text from the file
+            loader = TextLoader(
+                os.path.join(parent_directory, f"{file_name}.txt")
+            )
+            documents = loader.load()
+
+            # Add the source file name to the metadata
+            [doc.metadata.update({'source': file_name}) for doc in documents]
+
+            # Split the text by new line
+            text_splitter = CharacterTextSplitter(
+                separator="\n",
+                # We are only interested splitting by new line. We don't care about the chunk size so long
+                # as the chunk contains the entire new line. Ignore the warning this results in.
+                chunk_size=1,
+                chunk_overlap=0,
+            )
+
+            docs = text_splitter.split_documents(documents)
+
+            return docs
+
+        except Exception as e:
+            raise Exception(f"Failed to import text file: {str(e)}")

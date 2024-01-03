@@ -18,7 +18,6 @@ class TestRecipientMapper:
         Fixture to set up resources before each test method.
         """
         self.fake = Faker()
-        self.recipient_mapper = RecipientMapper()
 
     @pytest.fixture
     def fake_recipient_data(self):
@@ -29,6 +28,7 @@ class TestRecipientMapper:
         """
         data = {
             "_id": [self.fake.random_int(1, 100) for _ in range(10)],
+            "system_display_name": [self.fake.name() for _ in range(10)],
             "profile_joined_name": [self.fake.name() for _ in range(10)],
         }
         return pd.DataFrame(data)
@@ -54,10 +54,14 @@ class TestRecipientMapper:
         Test to check if the function returns the correct recipient_id to system_given_name dictionary.
         """
         # Calling the function with the fake recipient data.
-        recipient_id_to_name = (
-            self.recipient_mapper.create_recipient_id_to_name_mapping(
-                fake_recipient_data
-            )
+        random_profile_name = (
+            fake_recipient_data["profile_joined_name"].sample().values[0]
+        )
+
+        mapper = RecipientMapper(default_author_name=random_profile_name)
+
+        recipient_id_to_name = mapper.create_recipient_id_to_name_mapping(
+            fake_recipient_data, "profile_joined_name"
         )
 
         # Ensure the recipient_id_to_name dictionary is correct.
@@ -73,8 +77,11 @@ class TestRecipientMapper:
         Test to check if the function raises an Exception when an empty DataFrame is provided.
         """
         empty_df = pd.DataFrame()  # Create an empty DataFrame
+
+        mapper = RecipientMapper(default_author_name=self.fake.name())
+
         with pytest.raises(Exception):
-            self.recipient_mapper.create_recipient_id_to_name_mapping(empty_df)
+            mapper.create_recipient_id_to_name_mapping(empty_df, "profile_joined_name")
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_create_recipient_id_to_name_mapping_invalid_dataframe(self, iteration):
@@ -83,22 +90,36 @@ class TestRecipientMapper:
         """
         # Create an invalid DataFrame missing the '_id' column
         invalid_df = pd.DataFrame({"profile_joined_name": ["Alice", "Bob", "Charlie"]})
+
+        mapper = RecipientMapper(default_author_name=self.fake.name())
+
         with pytest.raises(Exception):
-            self.recipient_mapper.create_recipient_id_to_name_mapping(invalid_df)
+            mapper.create_recipient_id_to_name_mapping(
+                invalid_df, "profile_joined_name"
+            )
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_create_recipient_id_to_name_mapping_invalid_input(self, iteration):
+    def test_create_recipient_id_to_name_mapping_invalid_input(
+        self, iteration, fake_recipient_data
+    ):
         """
         Test to check if the function raises a ValueError or TypeError when invalid input is provided.
         """
+        random_profile_name = (
+            fake_recipient_data["profile_joined_name"].sample().values[0]
+        )
+
+        mapper = RecipientMapper(default_author_name=random_profile_name)
+
         # Passing None as input
         with pytest.raises(TypeError):
-            self.recipient_mapper.create_recipient_id_to_name_mapping(None)
+            mapper.create_recipient_id_to_name_mapping(None, "profile_joined_name")
 
         # Invalid column names in the DataFrame for this test case
         with pytest.raises(KeyError):
-            self.recipient_mapper.create_recipient_id_to_name_mapping(
-                pd.DataFrame({"name": ["Alice", "Bob", "Charlie"]})
+            mapper.create_recipient_id_to_name_mapping(
+                pd.DataFrame({"name": ["Alice", "Bob", "Charlie"]}),
+                "profile_joined_name",
             )
 
     @pytest.mark.parametrize("iteration", range(10))
@@ -108,8 +129,14 @@ class TestRecipientMapper:
         """
         Test to check if the function correctly updates the participant names.
         """
+        random_profile_name = (
+            fake_recipient_data["profile_joined_name"].sample().values[0]
+        )
+
+        mapper = RecipientMapper(default_author_name=random_profile_name)
+
         # Calling the function with the fake data
-        updated_df = self.recipient_mapper.update_node_participant_names(
+        updated_df = mapper.update_node_participant_names(
             fake_nodes_edges_data, fake_recipient_data
         )
 
@@ -139,10 +166,16 @@ class TestRecipientMapper:
             pd.Series, "map", side_effect=Exception("Unexpected exception!")
         )
 
+        random_profile_name = (
+            fake_recipient_data["profile_joined_name"].sample().values[0]
+        )
+
+        mapper = RecipientMapper(default_author_name=random_profile_name)
+
         with pytest.raises(
             Exception,
             match="Failed to map participant IDs in nodes_edges_df: Unexpected exception!",
         ):
-            self.recipient_mapper.update_node_participant_names(
+            mapper.update_node_participant_names(
                 fake_nodes_edges_data, fake_recipient_data
             )

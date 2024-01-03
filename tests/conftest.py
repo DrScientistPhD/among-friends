@@ -54,6 +54,7 @@ def fake_recipient_df():
         {
             "_id": [fake.random_int(min=1, max=1000) for _ in range(n)],
             "phone": [fake.random_int(min=1111111111, max=9999999999) for _ in range(n)],
+            "system_display_name": [fake.name() for _ in range(n)],
             "profile_joined_name": [fake.name() for _ in range(n)],
         }
     )

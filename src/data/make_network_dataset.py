@@ -126,6 +126,11 @@ def create_final_dataframe(
 
 @click.command()
 @click.option(
+    "--default-author-name",
+    type=str,
+    help="Specify how your username appears in the Signal app.",
+)
+@click.option(
     "--data-source",
     type=click.Choice(["production", "mocked"]),
     default="mocked",
@@ -139,7 +144,7 @@ def create_final_dataframe(
     show_default=True,
     help="Specify the thread ID to filter by.",
 )
-def main(data_source, thread_id) -> None:
+def main(default_author_name, data_source, thread_id) -> None:
     """Runs data processing scripts to turn data from either production_data
     or mocked_data into cleaned data ready to be analyzed (saved in the
     specified output file).
@@ -158,7 +163,10 @@ def main(data_source, thread_id) -> None:
             response_weight_slim_df, emoji_weight_slim_df, quotation_weight_slim_df
         )
 
-        nodes_edges_df = RecipientMapper.update_node_participant_names(
+        logger.info("Instantiating RecipientMapper")
+        mapper = RecipientMapper(default_author_name=default_author_name)
+
+        nodes_edges_df = mapper.update_node_participant_names(
             nodes_edges_raw_id_df, recipient_df
         )
 
@@ -166,7 +174,7 @@ def main(data_source, thread_id) -> None:
 
         logger.info("Done generating and saving data for SNA.")
 
-    except ValueError as e:
+    except Exception as e:
         logger.error(f"Error encountered: {str(e)}")
 
 

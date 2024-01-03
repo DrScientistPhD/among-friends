@@ -3,6 +3,7 @@ import pytest
 from faker import Faker
 
 from src.data.genai_preparation import ProcessMessageData, ProcessUserData
+from src.data.recipient_mapper import RecipientMapper
 
 
 class TestProcessMessageData:
@@ -12,7 +13,6 @@ class TestProcessMessageData:
     def setup_class(self):
         """Fixture to set up resources before each test method."""
         self.fake = Faker("en_US")
-        self.process_message_data = ProcessMessageData()
         self.thread_id_n = self.fake.random_int(min=1, max=3)
 
     @pytest.mark.parametrize("iteration", range(10))
@@ -27,7 +27,11 @@ class TestProcessMessageData:
             for _ in range(random_length)
         )
 
-        filtered_result = self.process_message_data.filter_long_text(random_string)
+        mapper = RecipientMapper(default_author_name=self.fake.name())
+
+        process_message_data = ProcessMessageData(recipient_mapper_instance=mapper)
+
+        filtered_result = process_message_data.filter_long_text(random_string)
 
         assert len(filtered_result) == 0
 
@@ -43,15 +47,28 @@ class TestProcessMessageData:
             for _ in range(random_length)
         )
 
-        filtered_result = self.process_message_data.filter_long_text(random_string)
+        mapper = RecipientMapper(default_author_name=self.fake.name())
+
+        process_message_data = ProcessMessageData(recipient_mapper_instance=mapper)
+
+        filtered_result = process_message_data.filter_long_text(random_string)
 
         assert len(random_string) == len(filtered_result)
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_clean_up_messages(self, fake_message_df, fake_recipient_df, iteration):
+
+        random_profile_name = (
+            fake_recipient_df["profile_joined_name"].sample().values[0]
+        )
+
+        mapper = RecipientMapper(default_author_name=random_profile_name)
+
+        process_message_data = ProcessMessageData(recipient_mapper_instance=mapper)
+
         """Test that process_messages_for_genai() returns a DataFrame with the correct columns."""
-        processed_messages = self.process_message_data.clean_up_messages(fake_message_df, fake_recipient_df,
-                                                                         self.thread_id_n)
+        processed_messages = process_message_data.clean_up_messages(fake_message_df, fake_recipient_df,
+                                                                    self.thread_id_n)
 
         assert isinstance(processed_messages, pd.DataFrame)
         assert set(processed_messages.columns) == {"date_sent_string_date", "message_author", "body",
@@ -60,7 +77,11 @@ class TestProcessMessageData:
     @pytest.mark.parametrize("iteration", range(10))
     def test_processed_message_data_to_sentences(self, fake_processed_message_df, iteration):
         """Test that message_data_to_sentences() returns a DataFrame with the correct columns."""
-        sentences = self.process_message_data.processed_message_data_to_sentences(fake_processed_message_df)
+        mapper = RecipientMapper(default_author_name=self.fake.name())
+
+        process_message_data = ProcessMessageData(recipient_mapper_instance=mapper)
+
+        sentences = process_message_data.processed_message_data_to_sentences(fake_processed_message_df)
 
         assert "sentence" in sentences.columns
         assert isinstance(sentences, pd.DataFrame)
