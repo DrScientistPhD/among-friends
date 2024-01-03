@@ -15,6 +15,9 @@ from src.data.recipient_mapper import RecipientMapper
 
 
 class ProcessMessageData:
+    def __init__(self, recipient_mapper_instance: RecipientMapper):
+        self.recipient_mapper_instance = recipient_mapper_instance
+
     @staticmethod
     def filter_long_text(text: str) -> str:
         """
@@ -43,9 +46,8 @@ class ProcessMessageData:
         except Exception as e:
             raise Exception(f"Failed to filter long text: {str(e)}")
 
-    @staticmethod
     def clean_up_messages(
-        message_df: pd.DataFrame, recipient_df: pd.DataFrame, thread_id: int
+        self, message_df: pd.DataFrame, recipient_df: pd.DataFrame, thread_id: int
     ) -> pd.DataFrame:
         """
         Processes the messages CSV file for GenAI usage. Data processing includes converting column types,
@@ -82,7 +84,7 @@ class ProcessMessageData:
                 "quote_body",
             ],
         )
-        validate_columns_in_dataframe(recipient_df, ["profile_joined_name", "phone"])
+        validate_columns_in_dataframe(recipient_df, ["system_display_name", "phone"])
 
         # Check if there are any records that meet the specified thread_id filter
         if message_df[message_df["thread_id"] == thread_id].empty:
@@ -136,10 +138,15 @@ class ProcessMessageData:
 
             selected_data = processed_data[message_columns].copy()
 
-            # Replace recipient IDs with usernames
+            # Replace recipient IDs with system display names
+            default_author_name = self.recipient_mapper_instance.default_author_name
+
             recipient_id_to_name_dict = (
-                RecipientMapper.create_recipient_id_to_name_mapping(recipient_df)
+                self.recipient_mapper_instance.create_recipient_id_to_name_mapping(
+                    recipient_df, "system_display_name"
+                )
             )
+
             selected_data["from_recipient_id"] = selected_data["from_recipient_id"].map(
                 recipient_id_to_name_dict
             )
@@ -212,7 +219,7 @@ class ProcessMessageData:
                     if row["quote_author"].strip() == ""
                     else f"On {row['date_sent_string_date']}, "
                     f"{row['message_author']} said \"{row['body']}\". This message was quoting and responding to "
-                         f"{row['quote_author']} who on {row['quote_id_string_date']} said \"{row['quote_body']}\"."
+                    f"{row['quote_author']} who on {row['quote_id_string_date']} said \"{row['quote_body']}\"."
                 ),
                 axis=1,
             )
@@ -324,7 +331,7 @@ class ProcessUserData:
         # Validate input data types
         validate_dataframe(recipient_df)
 
-        selected_cols = ["profile_joined_name", "phone"]
+        selected_cols = ["system_display_name", "profile_joined_name", "phone"]
         validate_columns_in_dataframe(recipient_df, selected_cols)
 
         try:
@@ -345,9 +352,9 @@ class ProcessUserData:
             )
 
             sentences = processed_user_df.apply(
-                lambda row: f'The user known as {row["profile_joined_name"]} has a phone '
-                f'number of {row["phone"]}, which belongs to the region of {row["phone_region"]}, in the country of '
-                            f'{row["phone_country"]}.',
+                lambda row: f'{row["system_display_name"]} has a username of {row["profile_joined_name"]} '
+                f'and a phone number of {row["phone"]}, which belongs to the region of {row["phone_region"]}, '
+                f'in the country of {row["phone_country"]}.',
                 axis=1,
             ).tolist()
 
