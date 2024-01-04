@@ -5,13 +5,15 @@ from typing import List
 
 import numpy as np
 import pinecone
+from dotenv import find_dotenv, load_dotenv
 from sentence_transformers import SentenceTransformer
 
 from src.data.data_validation import validate_data_types
 
+_ = load_dotenv(find_dotenv())
+
 
 class ManageVectorDb:
-    dimension_n = 768
     _pinecone_initialized = False
 
     @classmethod
@@ -20,9 +22,11 @@ class ManageVectorDb:
             try:
                 cls.pinecone_api_key = os.environ["PINECONE_API_KEY"]
                 cls.pinecone_env = os.environ["PINECONE_ENV"]
-                pinecone.init(api_key=cls.pinecone_api_key, environment=cls.pinecone_env)
+                pinecone.init(
+                    api_key=cls.pinecone_api_key, environment=cls.pinecone_env
+                )
                 cls._pinecone_initialized = True
-            except:
+            except Exception:
                 raise Exception(
                     f"Failed to initialize Pinecone. Check env file to ensure that the Pinecone API key and "
                     f"environment are set correctly."
@@ -47,13 +51,21 @@ class ManageVectorDb:
         try:
             ManageVectorDb.initialize_pinecone()
 
-            pinecone.create_index(
-                name=index_name, metric="cosine", shards=1, dimension=ManageVectorDb.dimension_n
-            )
+            if index_name in pinecone.list_indexes():
+                print(f"Index {index_name} already exists.")
 
-            # Wait for index to be initialized
-            while not pinecone.describe_index(index_name).status["ready"]:
-                time.sleep(1)
+            else:
+                pinecone.create_index(
+                    name=index_name,
+                    metric="cosine",
+                    shards=1,
+                    dimension=768
+                    # 768 is the dimension of the all-distilroberta-v1 embeddings
+                )
+
+                # Wait for index to be initialized
+                while not pinecone.describe_index(index_name).status["ready"]:
+                    time.sleep(1)
 
         except Exception as e:
             raise Exception(f"Failed to create index: {str(e)}")
@@ -89,7 +101,7 @@ class ManageVectorDb:
             while len(all_ids) < num_vectors:
                 # Need to generate a random input vector for the query (hacky workaround because Pinecone doesn't
                 # have a better way)
-                input_vector = np.random.rand(ManageVectorDb.dimension_n).tolist()
+                input_vector = np.random.rand(768).tolist()
                 results = index.query(
                     top_k=10000,
                     include_values=False,
@@ -131,7 +143,7 @@ class ManageVectorDb:
             # Get all existing IDs in the index
             existing_ids = ManageVectorDb.get_all_ids_from_index(index_name)
 
-            model = SentenceTransformer('all-distilroberta-v1')
+            model = SentenceTransformer("all-distilroberta-v1")
             embeddings_to_upsert = []
 
             # Check and upsert unique embeddings and metadata into the Pinecone index for this batch
@@ -144,7 +156,9 @@ class ManageVectorDb:
 
                 if content_hash not in existing_ids:
                     content_embedding = model.encode([page_content])[0]
-                    embeddings_to_upsert.append((content_hash, content_embedding.tolist(), metadata))
+                    embeddings_to_upsert.append(
+                        (content_hash, content_embedding.tolist(), metadata)
+                    )
 
                 # Upsert in batches of 500
                 if len(embeddings_to_upsert) >= 500 or i == len(docs) - 1:

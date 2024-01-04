@@ -83,6 +83,7 @@ def create_processed_text(
         message (pd.DataFrame): The raw message DataFrame.
         recipient (pd.DataFrame): The raw recipient DataFrame.
         thread_id (int): Thread ID to filter by.
+        default_author_name (str): The default author name to use for messages without a sender.
 
     """
     logger.info("Instantiating RecipientMapper and ProcessMessageData")
