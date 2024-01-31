@@ -10,6 +10,7 @@ from sentence_transformers import SentenceTransformer
 
 from src.data.data_validation import validate_data_types
 
+
 _ = load_dotenv(find_dotenv())
 
 

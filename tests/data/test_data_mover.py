@@ -106,7 +106,9 @@ class TestTextMover:
         mocker.patch("os.path.isfile", return_value=True)
 
         # Mocking import_text_file to return a list with fake data
-        mocker.patch("src.data.data_mover.TextMover.import_text_file", return_value=list())
+        mocker.patch(
+            "src.data.data_mover.TextMover.import_text_file", return_value=list()
+        )
 
         # Test the import_text_file method
         fake_list = self.text_mover.import_text_file("parent_dir", file_name)
@@ -128,7 +130,9 @@ class TestTextMover:
             self.text_mover.import_text_file("parent_dir", file_name)
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_export_sentences_to_file_success(self, iteration, fake_list_of_sentences, mocker):
+    def test_export_sentences_to_file_success(
+        self, iteration, fake_list_of_sentences, mocker
+    ):
         """Test to check if the function exports a list of sentences to a text file successfully."""
         fake_list = fake_list_of_sentences
         parent_directory = "parent_dir"
@@ -138,7 +142,9 @@ class TestTextMover:
         mocker.patch("src.data.data_mover.validate_data_types", return_value=None)
 
         # Mocking export_sentences_to_file method to avoid actual writing
-        mocker.patch("src.data.data_mover.TextMover.export_sentences_to_file", return_value=None)
+        mocker.patch(
+            "src.data.data_mover.TextMover.export_sentences_to_file", return_value=None
+        )
 
         # Test the export_csv method
         self.text_mover.export_sentences_to_file(fake_list, parent_directory, file_name)
@@ -159,7 +165,9 @@ class TestTextMover:
         )
 
         with pytest.raises(Exception, match="Failed to export sentences to text file:"):
-            self.text_mover.export_sentences_to_file(fake_list, parent_directory, file_name)
+            self.text_mover.export_sentences_to_file(
+                fake_list, parent_directory, file_name
+            )
 
 
 class TestDocumentMover:
@@ -172,7 +180,7 @@ class TestDocumentMover:
         self.document_mover = DocumentMover()
 
     @pytest.mark.parametrize("iteration", range(10))
-    def test_load_and_split_text_valid_file(self, iteration, mocker):
+    def test_load_and_split_user_text_valid_file(self, iteration, mocker):
         """Test to check if the function loads and splits text from a file."""
         # Generate a random file name for each iteration
         file_name = f"test_file_{iteration}.txt"
@@ -184,10 +192,41 @@ class TestDocumentMover:
         mocker.patch("os.path.isfile", return_value=True)
 
         # Mocking import_documents to return a list with fake data
-        mocker.patch("src.data.data_mover.DocumentMover.load_and_split_text", return_value=["Document1", "Document2", "Document3"])
+        mocker.patch(
+            "src.data.data_mover.DocumentMover.load_and_split_user_text",
+            return_value=["Document1", "Document2", "Document3"],
+        )
 
         # Test the load_and_split_text method
-        documents = self.document_mover.load_and_split_text("parent_dir", file_name)
+        documents = self.document_mover.load_and_split_user_text(
+            "parent_dir", file_name
+        )
+        assert isinstance(documents, list)
+        assert all(isinstance(doc, str) for doc in documents)
+        assert len(documents) == 3  # Expecting 3 documents from the mocked data
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_load_message_text_valid_file(self, iteration, mocker):
+        """Test to check if the function loads and splits text from a file."""
+        # Generate a random file name for each iteration
+        file_name = f"test_file_{iteration}.csv"
+
+        # Mocking os.path.join to construct the full file path
+        mocker.patch("os.path.join", return_value=f"parent_dir/{file_name}")
+
+        # Mocking os.path.isfile to return True
+        mocker.patch("os.path.isfile", return_value=True)
+
+        # Mocking import_documents to return a list with fake data
+        mocker.patch(
+            "src.data.data_mover.DocumentMover.load_message_text",
+            return_value=["Document1", "Document2", "Document3"],
+        )
+
+        # Test the load_and_split_text method
+        documents = self.document_mover.load_message_text(
+            "parent_dir", file_name
+        )
         assert isinstance(documents, list)
         assert all(isinstance(doc, str) for doc in documents)
         assert len(documents) == 3  # Expecting 3 documents from the mocked data
@@ -205,4 +244,4 @@ class TestDocumentMover:
         mocker.patch("os.path.isfile", return_value=False)
 
         with pytest.raises(Exception):
-            self.document_mover.load_and_split_text("parent_dir", file_name)
+            self.document_mover.load_and_split_user_text("parent_dir", file_name)

@@ -3,7 +3,8 @@ from typing import List
 
 import pandas as pd
 from langchain.docstore.document import Document
-from langchain.document_loaders import TextLoader
+from langchain_community.document_loaders import TextLoader
+from langchain_community.document_loaders import DataFrameLoader
 from langchain.text_splitter import CharacterTextSplitter
 
 from src.data.data_validation import validate_data_types
@@ -150,9 +151,9 @@ class TextMover:
 
 class DocumentMover:
     @staticmethod
-    def load_and_split_text(parent_directory: str, file_name: str) -> List[Document]:
+    def load_and_split_user_text(parent_directory: str, file_name: str) -> List[Document]:
         """
-        Loads text data from a file and splits it into a list of individual documents.
+        Loads user text data from a file and splits it into a list of individual documents.
 
         Args:
             parent_directory (str): The parent directory where the text file is located.
@@ -177,9 +178,7 @@ class DocumentMover:
                 raise FileNotFoundError(f"The file {file_name} does not exist.")
 
             # Load the text from the file
-            loader = TextLoader(
-                os.path.join(parent_directory, f"{file_name}.txt")
-            )
+            loader = TextLoader(full_file_path)
             documents = loader.load()
 
             # Add the source file name to the metadata
@@ -199,4 +198,45 @@ class DocumentMover:
             return docs
 
         except Exception as e:
-            raise Exception(f"Failed to import text file: {str(e)}")
+            raise Exception(f"Failed to import user text file: {str(e)}")
+
+    @staticmethod
+    def load_message_text(parent_directory: str, file_name: str) -> List[Document]:
+        """
+        Loads user text data from a file and splits it into a list of individual documents.
+
+        Args:
+            parent_directory (str): The parent directory where the text file is located.
+            file_name (str): The name of the csv file to be imported as a pandas DataFrame.
+
+        Returns:
+            List[Document]: A document containing a list of individual documents.
+
+        Raises:
+            TypeError: If either parent_directory or file_name is not of the expected type (str).
+            FileNotFoundError: If the file does not exist.
+            Exception: If there's an error during the import process.
+        """
+        # Validate input data
+        if not isinstance(parent_directory, str) or not isinstance(file_name, str):
+            raise TypeError("Parent directory and file name should be strings.")
+
+        full_file_path = os.path.join(parent_directory, f"{file_name}.csv")
+        try:
+            # Check if the file exists
+            if not os.path.isfile(full_file_path):
+                raise FileNotFoundError(f"The file {file_name} does not exist.")
+
+            df = pd.read_csv(full_file_path)
+
+            # Load the text from the DataFrame
+            loader = DataFrameLoader(df, page_content_column="text")
+            docs = loader.load()
+
+            # Add the source file name to the metadata
+            [doc.metadata.update({'source': file_name}) for doc in docs]
+
+            return docs
+
+        except Exception as e:
+            raise Exception(f"Failed to import user text file: {str(e)}")

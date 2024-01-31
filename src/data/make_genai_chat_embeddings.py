@@ -37,11 +37,11 @@ def import_data(data_source: str) -> Tuple[List[Document], List[Document]]:
     else:
         raise ValueError("Invalid data_source. Use 'production' or 'mocked'.")
 
-    messages_docs = DocumentMover.load_and_split_text(
+    messages_docs = DocumentMover.load_message_text(
         data_dir, "message_data"
     )
 
-    user_docs = DocumentMover.load_and_split_text(
+    user_docs = DocumentMover.load_and_split_user_text(
         data_dir, "user_data"
     )
 

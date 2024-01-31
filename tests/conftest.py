@@ -343,15 +343,39 @@ def fake_processed_message_df():
 
     return pd.DataFrame(
         {
-            "date_sent_string_date": [fake.date_time().strftime("%B %d, %Y %I:%M %p") for _ in range(n)],
+            "sent_year": [fake.date_this_decade().year for _ in range(n)],
+            "sent_month": [fake.date_this_month().strftime('%B') for _ in range(n)],
+            "sent_day": [fake.random_int(min=1, max=31) for _ in range(n)],
+            "sent_day_of_week": [fake.date_this_decade().strftime('%A') for _ in range(n)],
             "message_author": [fake.name() for _ in range(n)],
             "body": [fake.sentence(nb_words=6) for _ in range(n)],
-            "quote_id_string_date": [fake.date_time().strftime("%B %d, %Y %I:%M %p") for _ in range(n)],
             "quote_author": [fake.name() for _ in range(n)],
             "quote_body": [fake.sentence(nb_words=6) for _ in range(n)],
         }
     )
 
+@pytest.fixture
+def fake_message_sentences_df():
+    """
+    Fixture to generate fake DataFrame data for testing processed messages for GenAI purposes.
+
+    Returns:
+        pd.DataFrame: Fake DataFrame with random data.
+    """
+
+    n = 100
+
+    return pd.DataFrame(
+        {
+            "sentence": [fake.sentence(nb_words=6) for _ in range(n)],
+            "sent_year": [fake.date_this_decade().year for _ in range(n)],
+            "sent_month": [fake.date_this_month().strftime("%B") for _ in range(n)],
+            "sent_day": [fake.random_int(min=1, max=31) for _ in range(n)],
+            "sent_day_of_week": [
+                fake.date_this_decade().strftime("%A") for _ in range(n)
+            ],
+        }
+    )
 
 @pytest.fixture
 def fake_list_of_sentences():

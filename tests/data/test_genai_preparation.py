@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from faker import Faker
+from unittest.mock import patch, MagicMock
 
 from src.data.genai_preparation import ProcessMessageData, ProcessUserData
 from src.data.recipient_mapper import RecipientMapper
@@ -71,8 +72,8 @@ class TestProcessMessageData:
                                                                     self.thread_id_n)
 
         assert isinstance(processed_messages, pd.DataFrame)
-        assert set(processed_messages.columns) == {"date_sent_string_date", "message_author", "body",
-                                                   "quote_id_string_date", "quote_author", "quote_body"}
+        assert set(processed_messages.columns) == {"body", "message_author", "quote_author", "quote_body", "sent_day",
+                                                   "sent_day_of_week", "sent_month", "sent_year"}
 
     @pytest.mark.parametrize("iteration", range(10))
     def test_processed_message_data_to_sentences(self, fake_processed_message_df, iteration):
@@ -85,6 +86,24 @@ class TestProcessMessageData:
 
         assert "sentence" in sentences.columns
         assert isinstance(sentences, pd.DataFrame)
+
+    @pytest.mark.parametrize("iteration", range(10))
+    def test_concatenate_with_neighbors(self, fake_message_sentences_df, iteration):
+        """Test concatenate_with_neighbors function."""
+        mapper = RecipientMapper(default_author_name="TestAuthor")
+        process_message_data = ProcessMessageData(recipient_mapper_instance=mapper)
+
+        # Mock the pd.concat function
+        with patch.object(pd, 'concat', side_effect=pd.concat) as mock_concat:
+            # Mock the str.replace function
+            with patch('pandas.Series.str.replace', side_effect=lambda pattern, repl: MagicMock()):
+                concatenated_result = process_message_data.concatenate_with_neighbors(fake_message_sentences_df)
+
+        assert isinstance(concatenated_result, pd.DataFrame)
+        assert set(concatenated_result.columns) == {"text", "sent_year", "sent_month", "sent_day", "sent_day_of_week"}
+
+        # Check if mock function was called
+        mock_concat.assert_called_once()
 
 
 class TestProcessUserData:
