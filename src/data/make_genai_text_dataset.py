@@ -45,14 +45,14 @@ def import_data(data_source: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def export_message_user_txt_data(
-    data_destination: str, message_data_txt: List[str], user_data_txt: List[str]
+    data_destination: str, message_data_df: pd.DataFrame, user_data_txt: List[str]
 ) -> None:
     """
-    Export the message_data_txt and user_data_txt to either the prod or mock directory.
+    Export the message_data_df and user_data_txt to either the prod or mock directory.
 
     Args:
         data_destination (str): Either 'production' or 'mocked' to specify the data source.
-        message_data_txt (List[str]): The processed message data to save.
+        message_data_df (pd.DataFrame): The processed message data to save.
         user_data_txt (List[str]): The processed user data to save.
 
     Raises:
@@ -67,7 +67,7 @@ def export_message_user_txt_data(
         raise ValueError("Invalid selection. Use 'production' or 'mocked'.")
 
     logger.info(f"exporting message_data_txt to {data_destination} data directory")
-    TextMover.export_sentences_to_file(message_data_txt, data_dir, "message_data")
+    CSVMover.export_csv(message_data_df, data_dir, "message_data")
 
     logger.info(f"exporting user_data_txt to {data_destination} data directory")
     TextMover.export_sentences_to_file(user_data_txt, data_dir, "user_data")
@@ -75,7 +75,7 @@ def export_message_user_txt_data(
 
 def create_processed_text(
     message: pd.DataFrame, recipient: pd.DataFrame, thread_id: int, default_author_name
-) -> Tuple[List[str], List[str]]:
+) -> Tuple[pd.DataFrame, List[str]]:
     """
     Processes the text and saves them as langchain Documents in a local directory.
 
@@ -85,6 +85,8 @@ def create_processed_text(
         thread_id (int): Thread ID to filter by.
         default_author_name (str): The default author name to use for messages without a sender.
 
+    Returns:
+        Tuple[pd.DataFrame, List[str]]: A tuple containing the processed message data and user data.
     """
     logger.info("Instantiating RecipientMapper and ProcessMessageData")
     mapper = RecipientMapper(default_author_name=default_author_name)
@@ -95,18 +97,16 @@ def create_processed_text(
         message, recipient, thread_id
     )
 
-    message_sentences_df = ProcessMessageData.processed_message_data_to_sentences(
+    message_data_sentences_df = ProcessMessageData.processed_message_data_to_sentences(
         processed_message_df
     )
 
-    messages_data_txt = ProcessMessageData.concatenate_with_neighbors(
-        message_sentences_df
-    )
+    message_data_concatenated_df = ProcessMessageData.concatenate_with_neighbors(message_data_sentences_df)
 
     logger.info("Processing user data into discrete sentences.")
     user_data_txt = ProcessUserData.user_data_to_sentences(recipient)
 
-    return messages_data_txt, user_data_txt
+    return message_data_concatenated_df, user_data_txt
 
 
 @click.command()
@@ -139,11 +139,11 @@ def main(default_author_name, data_source, thread_id) -> None:
 
         message, recipient = import_data(data_source)
 
-        message_data_txt, user_data_txt = create_processed_text(
+        messages_data_concatenated_df, user_data_txt = create_processed_text(
             message, recipient, thread_id, default_author_name
         )
 
-        export_message_user_txt_data(data_source, message_data_txt, user_data_txt)
+        export_message_user_txt_data(data_source, messages_data_concatenated_df, user_data_txt)
 
         logger.info("Data vectorization prep complete.")
     except Exception as e:
