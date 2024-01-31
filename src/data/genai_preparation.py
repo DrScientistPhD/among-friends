@@ -98,25 +98,9 @@ class ProcessMessageData:
             message_df.sort_values(by="date_sent", ascending=True, inplace=True)
 
             # Convert datetime column to an easily read format
-            processed_data = DateTimeConverter.convert_unix_to_string_date(
+            processed_data = DateTimeConverter.convert_unix_to_date_info(
                 message_df, "date_sent"
             )
-
-            # Fill in NA values in quote_id column and convert column to datetime
-            processed_data["quote_id"] = (
-                processed_data["quote_id"].fillna(0).astype(int)
-            )
-
-            # Convert datetime column to an easily read format
-            processed_data = DateTimeConverter.convert_unix_to_string_date(
-                processed_data, "quote_id"
-            )
-
-            # Replace "missing" quote_id_string_dates with a white space.
-            processed_data.loc[
-                processed_data["quote_id_string_date"] == "December 31, 1969 07:00 PM",
-                "quote_id_string_date",
-            ] = ""
 
             # Fill in missing values for the quote_author column for easier data processing and select columns
             processed_data["quote_author"] = (
@@ -125,10 +109,12 @@ class ProcessMessageData:
 
             # Select for appropriate columns and sort by date_sent_datetime
             message_columns = [
-                "date_sent_string_date",
+                "sent_year",
+                "sent_month",
+                "sent_day",
+                "sent_day_of_week",
                 "from_recipient_id",
                 "body",
-                "quote_id_string_date",
                 "quote_author",
                 "quote_body",
             ]
@@ -137,9 +123,6 @@ class ProcessMessageData:
             processed_data = processed_data[processed_data["body"].notnull()]
 
             selected_data = processed_data[message_columns].copy()
-
-            # Replace recipient IDs with system display names
-            default_author_name = self.recipient_mapper_instance.default_author_name
 
             recipient_id_to_name_dict = (
                 self.recipient_mapper_instance.create_recipient_id_to_name_mapping(
@@ -201,10 +184,12 @@ class ProcessMessageData:
         validate_columns_in_dataframe(
             processed_message_df,
             [
-                "date_sent_string_date",
+                "sent_year",
+                "sent_month",
+                "sent_day",
+                "sent_day_of_week",
                 "message_author",
                 "body",
-                "quote_id_string_date",
                 "quote_author",
                 "quote_body",
             ],
@@ -214,15 +199,22 @@ class ProcessMessageData:
             result_df = pd.DataFrame()
             result_df["sentence"] = processed_message_df.apply(
                 lambda row: (
-                    f"On {row['date_sent_string_date']}, "
-                    f"{row['message_author']} said \"{row['body']}\"."
-                    if row["quote_author"].strip() == ""
-                    else f"On {row['date_sent_string_date']}, "
-                    f"{row['message_author']} said \"{row['body']}\". This message was quoting and responding to "
-                    f"{row['quote_author']} who on {row['quote_id_string_date']} said \"{row['quote_body']}\"."
+                    ' '.join([
+                        row['message_author'], "said", f'"{row["body"]}".'
+                    ]) if row["quote_author"].strip() == "" else ' '.join([
+                        row['message_author'], "said", f'"{row["body"]}".',
+                        "This message was quoting and responding to",
+                        f'{row["quote_author"]}', "who said", f'"{row["quote_body"]}".'
+                    ])
                 ),
                 axis=1,
             )
+
+            # Copy additional columns from processed_message_df to result_df
+            result_df["sent_year"] = processed_message_df["sent_year"]
+            result_df["sent_month"] = processed_message_df["sent_month"]
+            result_df["sent_day"] = processed_message_df["sent_day"]
+            result_df["sent_day_of_week"] = processed_message_df["sent_day_of_week"]
 
             return result_df
 
@@ -232,40 +224,79 @@ class ProcessMessageData:
             )
 
     @staticmethod
-    def concatenate_with_neighbors(message_sentences_df) -> List[str]:
+    def concatenate_with_neighbors(message_sentences_df) -> pd.DataFrame:
         """
         Concatenates the values in a DataFrame with their neighboring rows so that each row contains the text from the
-        previous row, the current row, and the next row. The first and last rows will only contain the text from the
-        respective row and the next/previous rows, respectively.
+        previous row, the current row, and the next row. Concatenations are applied to the text column and are done
+        using the following criteria:
+        1. Rows are concatenated sequentially and no concatenated row exceeds more than 1,000 characters. If
+        concatenating an additional row would exceed 1,000 characters, the current row is concatenated with the next
+        group of rows.
+        2. Only rows with the same sent_year, sent_month, sent_day, and sent_day_of_week values are concatenated. The
+        concatenated row retains the earliest sent_year, sent_month, sent_day, and sent_day_of_week values from
+        this grouping.
+        3. There is a deliberate one row overlap between the final concatenated rows, such that the first and last
+        sentence of a concatenated row are the same as the first and last sentence of the previous concatenated row
+        and the next concatenated row, respectively.
+        4. The first and final rows are not concatenated with the previous and next rows, respectively.
+        5. Emojis are removed from the final concatenated text.
 
         Args:
             message_sentences_df (pd.DataFrame): A DataFrame containing the message sentences.
 
         Returns:
-            List[str]: A list of strings containing the concatenated text.
+            pd.DataFrame: A pandas DataFrame with text messages.
 
+        Raises:
+            TypeError: If message_sentences_df is not a pandas DataFrame.
+            KeyError: If the specified columns do not exist in the DataFrame.
+            Exception: If there's an error during processing.
         """
         # Validate input data types
         validate_dataframe(message_sentences_df)
 
+        # Validate that the DataFrame contains the necessary columns
+        validate_columns_in_dataframe(message_sentences_df, ["sentence", "sent_year", "sent_month", "sent_day",
+                                                             "sent_day_of_week"])
+
         try:
-            shifted_up = message_sentences_df.shift(-1)
-            shifted_down = message_sentences_df.shift(1)
+            # Initialize an empty list to store dataframes
+            result_dfs = []
 
-            concatenated_texts = (
-                (
-                    shifted_down.fillna("")
-                    + " "
-                    + message_sentences_df
-                    + " "
-                    + shifted_up.fillna("")
-                )
-                .sum(axis=1)
-                .str.strip()
-                .tolist()
-            )
+            current_texts = []
+            current_group = None
 
-            return concatenated_texts
+            for index, row in message_sentences_df.iterrows():
+                # Check if adding the current row would exceed 500 characters
+                if sum(map(len, current_texts)) + len(row['sentence']) > 500:
+                    # Create a new dataframe for the current group with sentence overlap
+                    current_df = pd.DataFrame({'text': [" ".join(current_texts)], **current_group})
+
+                    # Append the current_df to the list
+                    result_dfs.append(current_df)
+
+                    # Reset current_texts and update current_group with sentence overlap
+                    current_texts = [current_texts[-1], row['sentence']]
+                    current_group = row[['sent_year', 'sent_month', 'sent_day', 'sent_day_of_week']].to_dict()
+                else:
+                    # Append the sentence to current_texts
+                    current_texts.append(row['sentence'])
+
+                    # Update current_group
+                    current_group = row[['sent_year', 'sent_month', 'sent_day', 'sent_day_of_week']].to_dict()
+
+            # Append the last group to the result_dfs
+            current_df = pd.DataFrame({'text': [" ".join(current_texts)], **current_group})
+            result_dfs.append(current_df)
+
+            # Concatenate all dataframes in the list
+            result_df = pd.concat(result_dfs, ignore_index=True)
+
+            # Remove emojis from text column
+            result_df["text"] = result_df["text"].astype(str).apply(
+                lambda x: x.encode('ascii', 'ignore').decode('ascii'))
+
+            return result_df
 
         except Exception as e:
             raise Exception(f"Failed to concatenate text: {str(e)}")
