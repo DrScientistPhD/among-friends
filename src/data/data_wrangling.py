@@ -1,3 +1,5 @@
+
+import datetime
 import pandas as pd
 import polars as pl
 from polars import col
@@ -117,6 +119,56 @@ class DateTimeConverter:
                 f"An error occurred while converting the Unix timestamps to string datetime: {str(e)}"
             )
 
+    @staticmethod
+    def convert_unix_to_date_info(df: pd.DataFrame, timestamp_column: str) -> pd.DataFrame:
+        """
+        Converts a column with Unix timestamps (in milliseconds) to a dictionary containing year, month, day, and
+        day_of_week.
+
+        Args:
+            df (pd.DataFrame): The DataFrame containing the Unix timestamp column.
+            timestamp_column (str): The name of the column containing Unix timestamps in milliseconds.
+
+        Returns:
+            pd.DataFrame: A DataFrame with a new column containing the converted date information.
+
+        Raises:
+            TypeError: If df is not a pandas DataFrame, or timestamp_column is not a string.
+            KeyError: If the specified timestamp column does not exist in the DataFrame.
+            ValueError: If an unexpected error occurs during datetime conversion.
+            Exception: If an error occurs converting unix to date information.
+        """
+        # Validate input data
+        validate_dataframe(df)
+        validate_data_types(timestamp_column, str, "timestamp_column")
+        validate_columns_in_dataframe(df, [timestamp_column])
+
+        try:
+            # Check if the timestamp column exists in the DataFrame
+            if timestamp_column not in df.columns:
+                raise KeyError(
+                    f"The specified column '{timestamp_column}' does not exist in the DataFrame."
+                )
+
+            # Check if the timestamp column is of integer type
+            if not pd.api.types.is_integer_dtype(df[timestamp_column]):
+                raise TypeError(
+                    f"The specified column '{timestamp_column}' "
+                    f"must be of integer type representing Unix timestamps in milliseconds."
+                )
+
+            # Convert the Unix timestamps to date information
+            df["sent_year"] = pd.to_datetime(df[timestamp_column], unit="ms", utc=True).dt.year
+            df["sent_month"] = pd.to_datetime(df[timestamp_column], unit="ms", utc=True).dt.strftime("%B")
+            df["sent_day"] = pd.to_datetime(df[timestamp_column], unit="ms", utc=True).dt.day
+            df["sent_day_of_week"] = pd.to_datetime(df[timestamp_column], unit="ms", utc=True).dt.strftime("%A")
+
+            return df
+
+        except Exception as e:
+            raise Exception(
+                f"An error occurred while converting the Unix timestamps to date information: {str(e)}"
+            )
 
 class MessageDataWrangler:
     @staticmethod
