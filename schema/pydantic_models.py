@@ -1,6 +1,5 @@
 from typing import List, Optional, Union
 
-from langchain.docstore.document import Document
 from pydantic.v1 import BaseModel, Field
 
 
@@ -40,11 +39,4 @@ class DocsWithFilterModel(BaseModel):
     sent_year: Optional[Union[int, List[int]]] = Field(
         None,
         description="The year when the data was sent. For example, 2020, 2022, [2021, 2022].",
-    )
-
-
-class ExtractMetadataModel(BaseModel):
-    documents: List[Document] = Field(
-        ...,
-        description="A list of Document objects from which to extract metadata.",
     )
