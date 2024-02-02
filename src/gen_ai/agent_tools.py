@@ -21,27 +21,30 @@ class RetrieverBuilder:
         self.model_name = model_name
 
     def build(self, query, search_filter=None):
-        pinecone.init(
-            api_key=self.api_key,
-            environment=self.environment,
-        )
-        index = pinecone.Index(index_name=self.index_name)
-        embed = SentenceTransformerEmbeddings(model_name=self.model_name)
-        vectorstore = Pinecone(index, embed, "text")
-        retriever_args = {"search_type": "mmr"}
-        k = 5
+        try:
+            pinecone.init(
+                api_key=self.api_key,
+                environment=self.environment,
+            )
+            index = pinecone.Index(index_name=self.index_name)
+            embed = SentenceTransformerEmbeddings(model_name=self.model_name)
+            vectorstore = Pinecone(index, embed, "text")
+            retriever_args = {"search_type": "mmr"}
+            k = 5
 
-        if search_filter is not None:
-            search_filter_with_k = {**search_filter, "k": k}
-            retriever_args["search_kwargs"] = search_filter_with_k
-        else:
-            retriever_args["search_kwargs"] = {"k": k}
+            if search_filter is not None:
+                search_filter_with_k = {**search_filter, "k": k}
+                retriever_args["search_kwargs"] = search_filter_with_k
+            else:
+                retriever_args["search_kwargs"] = {"k": k}
 
-        retriever = vectorstore.as_retriever(**retriever_args)
+            retriever = vectorstore.as_retriever(**retriever_args)
 
-        docs = retriever.get_relevant_documents(query)
+            docs = retriever.get_relevant_documents(query)
+            return docs
 
-        return docs
+        except Exception as e:
+            return []
 
 
 class AgentTools:
