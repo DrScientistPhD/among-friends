@@ -27,9 +27,11 @@ agent_chain = agent_chain_builder.build()
 
 
 agent_chain.invoke({"input": "Give me an example of someone talking about cats."})
+
 agent_chain.invoke(
-    {"input": "Tell me something the group chat talked about in May 2023."}
+    {"input": "Tell me something the group chat talked about on any day except Friday and Saturday."}
 )
+
 agent_chain.invoke({"input": "Does Holly have children?"})
 agent_chain.invoke({"input": "Be more specific, please."})
 
